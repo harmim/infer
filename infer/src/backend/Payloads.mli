@@ -28,7 +28,8 @@ include sig
     ; siof: SiofDomain.Summary.t option
     ; starvation: StarvationDomain.summary option
     ; nullsafe: NullsafeSummary.t option
-    ; uninit: UninitDomain.Summary.t option }
+    ; uninit: UninitDomain.Summary.t option
+    ; atomicity: AtomicityDomain.summary option }
   [@@deriving fields]
 end
 

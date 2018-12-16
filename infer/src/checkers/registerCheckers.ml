@@ -150,8 +150,12 @@ let all_checkers =
     ; callbacks= [(Procedure ClassLoads.analyze_procedure, Language.Java)] }
   ; { name= "Self captured in block checker"
     ; active= Config.is_checker_enabled SelfInBlock
-    ; callbacks= [(Procedure SelfInBlock.checker, Language.Clang)] } ]
-
+    ; callbacks= [(Procedure SelfInBlock.checker, Language.Clang)] }
+  ; { name= "Atomicity violations analysis"
+    ; active= Config.is_checker_enabled Atomicity
+    ; callbacks=
+      [ (Procedure Atomicity.checker, Language.Clang)
+      ; (Cluster Atomicity.reporting, Language.Clang) ] } ]
 
 let get_active_checkers () =
   let filter_checker {active} = active in

@@ -16,7 +16,8 @@ OBJC_TARGET = x86_64-apple-darwin14
 
 CFLAGS += -Wno-deprecated-objc-isa-usage --target=$(OBJC_TARGET) -x objective-c -c -mios-simulator-version-min=8.2 -isysroot $(XCODE_ISYSROOT)
 
-all: $(OBJECTS)
+# all: $(OBJECTS)
+all:
 
 clean:
 	$(QUIET)rm -rf $(OBJECTS)

@@ -25,6 +25,14 @@ OPTIONS
            Activates: Enable --annotation-reachability and disable all other
            checkers (Conversely: --no-annotation-reachability-only)
 
+       --atomicity
+           Activates: atomicity violations analysis (Conversely:
+           --no-atomicity)
+
+       --atomicity-only
+           Activates: Enable --atomicity and disable all other checkers
+           (Conversely: --no-atomicity-only)
+
        --no-biabduction
            Deactivates: the separation logic based bi-abduction analysis
            using the checkers framework (Conversely: --biabduction)

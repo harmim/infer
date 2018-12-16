@@ -33,6 +33,7 @@ type t =
   | SelfInBlock
   | Starvation
   | Uninit
+  | Atomicity
 [@@deriving equal, enumerate]
 
 type support = NoSupport | Support | ExperimentalSupport | ToySupport
@@ -248,4 +249,11 @@ let config checker =
       ; show_in_help= true
       ; cli_flag= "uninit"
       ; enabled_by_default= true
+      ; cli_deprecated_flags= [] }
+  | Atomicity ->
+      { support= supports_clang_and_java
+      ; short_documentation= "atomicity violations analysis"
+      ; show_in_help= true
+      ; cli_flag= "atomicity"
+      ; enabled_by_default= false
       ; cli_deprecated_flags= [] }

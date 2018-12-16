@@ -109,6 +109,14 @@ OPTIONS
            Additional Buck flavors to append to targets discovered by the
            --buck-compilation-database option.           See also infer-capture(1).
 
+       --atomicity
+           Activates: atomicity violations analysis (Conversely:
+           --no-atomicity)           See also infer-analyze(1).
+
+       --atomicity-only
+           Activates: Enable --atomicity and disable all other checkers
+           (Conversely: --no-atomicity-only)           See also infer-analyze(1).
+
        --no-biabduction
            Deactivates: the separation logic based bi-abduction analysis
            using the checkers framework (Conversely: --biabduction)       

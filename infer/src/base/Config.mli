@@ -656,6 +656,8 @@ val xcode_developer_dir : string option
 
 val xcpretty : bool
 
+(** {2 Global variables with initial values specified by command-line options} *)
+
 (** {2 Configuration values derived from command-line options} *)
 
 val dynamic_dispatch : bool

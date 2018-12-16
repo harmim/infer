@@ -33,6 +33,7 @@ type t =
   | SelfInBlock
   | Starvation
   | Uninit
+  | Atomicity
 [@@deriving equal, enumerate]
 
 (** per-language support for each checker *)
