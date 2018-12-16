@@ -37,6 +37,8 @@ type t =
   | ToplOnBiabduction
   | ToplOnPulse
   | Uninit
+  | AtomicSets
+  | AtomicityViolations
 [@@deriving equal, enumerate]
 
 (** per-language support for each checker *)
