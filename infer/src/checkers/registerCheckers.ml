@@ -127,7 +127,12 @@ let all_checkers =
   ; {name= "purity"; active= Config.purity; callbacks= [(Procedure Purity.checker, Language.Java)]}
   ; { name= "Class loading analysis"
     ; active= Config.class_loads
-    ; callbacks= [(Procedure ClassLoads.analyze_procedure, Language.Java)] } ]
+    ; callbacks= [(Procedure ClassLoads.analyze_procedure, Language.Java)] }
+  ; { name= "Atomicity violations analysis"
+    ; active= Config.atomicity
+    ; callbacks=
+        [ (Procedure Atomicity.checker, Language.Clang)
+        ; (Cluster Atomicity.reporting, Language.Clang) ] } ]
 
 
 let get_active_checkers () =

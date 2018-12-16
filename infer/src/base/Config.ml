@@ -609,7 +609,8 @@ and ( annotation_reachability
     , resource_leak
     , siof
     , starvation
-    , uninit ) =
+    , uninit
+    , atomicity ) =
   let mk_checker ?(default = false) ?(deprecated = []) ~long doc =
     let var =
       CLOpt.mk_bool ~long
@@ -672,7 +673,10 @@ and ( annotation_reachability
     mk_checker ~long:"siof" ~default:true
       "the Static Initialization Order Fiasco analysis (C++ only)"
   and starvation = mk_checker ~long:"starvation" ~default:false "starvation analysis"
-  and uninit = mk_checker ~long:"uninit" "checker for use of uninitialized values" ~default:true in
+  and uninit = mk_checker ~long:"uninit" "checker for use of uninitialized values" ~default:true
+  and atomicity =
+    mk_checker ~long:"atomicity" ~default:false "atomicity violations analysis"
+  in
   let mk_only (var, long, doc, _) =
     let _ : bool ref =
       CLOpt.mk_bool_group ~long:(long ^ "-only")
@@ -734,7 +738,8 @@ and ( annotation_reachability
   , resource_leak
   , siof
   , starvation
-  , uninit )
+  , uninit
+  , atomicity )
 
 
 and annotation_reachability_custom_pairs =
@@ -3007,6 +3012,8 @@ and write_html_whitelist_regex = !write_html_whitelist_regex
 and xcode_developer_dir = !xcode_developer_dir
 
 and xcpretty = !xcpretty
+
+and atomicity = !atomicity
 
 (** Configuration values derived from command-line options *)
 

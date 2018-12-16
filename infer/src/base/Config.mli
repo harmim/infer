@@ -695,6 +695,8 @@ val xcode_developer_dir : string option
 
 val xcpretty : bool
 
+val atomicity : bool
+
 (** {2 Global variables with initial values specified by command-line options} *)
 
 val clang_compilation_dbs : [`Escaped of string | `Raw of string] list ref

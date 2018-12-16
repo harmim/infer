@@ -23,7 +23,8 @@ type t =
   ; siof: SiofDomain.Summary.t option
   ; starvation: StarvationDomain.summary option
   ; typestate: TypeState.t option
-  ; uninit: UninitDomain.Summary.t option }
+  ; uninit: UninitDomain.Summary.t option
+  ; atomicity: AtomicityDomain.summary option }
 
 val pp : Pp.env -> Format.formatter -> t -> unit
 
