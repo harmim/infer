@@ -36,38 +36,11 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
       let calleePnameString : string = Typ.Procname.to_string calleePname in
 
       if Domain.is_lock calleePnameString then
-        let callSequence : string list =
-          Domain.call_sequence_add_lock
-            (Domain.call_sequence_add_first_occurences
-              astate.callSequence
-              astate.firstOccurrences)
-        in
-
-        {astate with firstOccurrences= []; callSequence= callSequence}
+        Domain.update_astate_on_lock astate
       else if Domain.is_unlock calleePnameString then
-        if List.is_empty astate.callSequence then
-          astate
-        else
-          let callSequence : string list =
-            Domain.call_sequence_add_unlock
-              (Domain.call_sequence_add_first_occurences
-                astate.callSequence
-                astate.firstOccurrences)
-          in
-          let finalCalls : string list =
-            Domain.final_calls_add_call_sequence astate.finalCalls callSequence
-          in
-
-          { firstOccurrences= []
-          ; callSequence= []
-          ; finalCalls= finalCalls }
+        Domain.update_astate_on_unlock astate
       else
-        let firstOccurrences : string list =
-          Domain.first_occurrences_add_function
-            astate.firstOccurrences calleePnameString
-        in
-
-        {astate with firstOccurrences= firstOccurrences}
+        Domain.update_astate_on_function_call astate calleePnameString
 
     | _ ->
       astate
@@ -109,10 +82,10 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
     Payload.update_summary convertedSummary procArgs.summary
 
   | None ->
-      L.die
-        L.InternalError
-        "Atomicity analysis failed to compute post for %s."
-        procNameString
+    L.die
+      L.InternalError
+      "Atomicity analysis failed to compute post for %s."
+      procNameString
 
 let reporting (_ : Callbacks.cluster_callback_args) : unit =
   F.printf ""
