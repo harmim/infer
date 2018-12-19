@@ -6,46 +6,78 @@ module F = Format
 let strings_equal (s1 : string) (s2 : string) : bool =
   phys_equal (String.compare s1 s2) 0
 
-let lists_equal (l1 : string list) (l2 : string list) : bool =
-  let mem_all (l1 : string list) (l2 : string list) : bool =
-    let memAll : bool ref = ref true in
+let lists_equal
+  (l1 : 'a list) (l2 : 'b list) (cmp : ('a -> 'b -> bool)) : bool =
+  if not (phys_equal (List.length l1) (List.length l2)) then false
+  else
+  (
+    let eq : bool ref = ref true in
 
-    let iterator (s : string) : unit =
-      if not (List.mem l2 s ~equal:strings_equal) then memAll := false
+    let iterator (e1 : 'a) (e2 : 'b) : unit =
+      if not (cmp e1 e2) then eq := false
     in
-    List.iter l1 ~f:iterator;
+    List.iter2_exn l1 l2 ~f:iterator;
 
-    !memAll
-  in
+    !eq
+  )
 
-  phys_equal (List.length l1) (List.length l2)
-  && mem_all l1 l2
-  && mem_all l2 l1
+let string_lists_equal (l1 : string list) (l2 : string list) : bool =
+  lists_equal l1 l2 strings_equal
 
-let print_string_with_space (fmt : F.formatter) (s : string) : unit =
-  F.fprintf fmt "%s " s
+let list_remove_last (l : 'a list) : 'a list =
+  let lLength : int = List.length l in
 
-let is_lock (fn : string) : bool =
-  phys_equal (String.compare fn "pthread_mutex_lock") 0
+  let filter (i : int) (_ : 'a) : bool = not (phys_equal i (lLength - 1)) in
+  List.filteri l ~f:filter
 
-let is_unlock (fn : string) : bool =
-  phys_equal (String.compare fn "pthread_mutex_unlock") 0
+let list_is_sublist
+  (l1 : 'a list) (l2 : 'a list) (cmp : ('a -> 'b -> bool)) : bool =
+  let l1Length : int = List.length l1 in
+  let l2Length : int = List.length l2 in
+
+  if l1Length > l2Length then false
+  else
+  (
+    let i : int ref = ref 0 in
+    let j : int ref = ref 0 in
+
+    while !i < l2Length && not (phys_equal !j l1Length) do
+      if cmp (List.nth_exn l2 !i) (List.nth_exn l1 !j) then j := !j + 1
+      else
+      (
+        i := !i - !j;
+        j := 0
+      );
+
+      i := !i + 1
+    done;
+
+    phys_equal !j l1Length
+  )
+
+let string_list_is_sublist (l1 : string list) (l2 : string list) : bool =
+  list_is_sublist l1 l2 strings_equal
+
+let is_lock (fn : string) : bool = strings_equal fn "pthread_mutex_lock"
+
+let is_unlock (fn : string) : bool = strings_equal fn "pthread_mutex_unlock"
 
 (******************************** Astate **************************************)
 
 type tElement =
   { firstOccurrences : string list
   ; callSequence : string list
-  ; finalCalls : string list } [@@ deriving sexp]
+  ; finalCalls : string list
+  ; isInLock : bool } [@@ deriving sexp]
 
 module TSet = Set.Make (struct
   type t = tElement [@@ deriving sexp]
 
   let compare (e1 : t) (e2 : t) : int =
     if
-      lists_equal e1.firstOccurrences e2.firstOccurrences
-      && lists_equal e1.callSequence e2.callSequence
-      && lists_equal e1.finalCalls e2.finalCalls
+      string_lists_equal e1.firstOccurrences e2.firstOccurrences
+      && string_lists_equal e1.callSequence e2.callSequence
+      && string_lists_equal e1.finalCalls e2.finalCalls
     then 0
     else
       let e1Length : int =
@@ -68,92 +100,83 @@ let initial : t =
   TSet.singleton
     { firstOccurrences : string list= []
     ; callSequence : string list= []
-    ; finalCalls : string list= [] }
+    ; finalCalls : string list= []
+    ; isInLock : bool= false }
 
 let pp (fmt : F.formatter) (astate : t) : unit =
+  let lastAstateEl : tElement = TSet.max_elt_exn astate in
   let print_final_calls (astateEl : tElement) : unit =
     if not (List.is_empty astateEl.finalCalls) then
     (
-      F.fprintf fmt "{ ";
-      List.iter astateEl.finalCalls ~f:(print_string_with_space fmt);
-      F.fprintf fmt "} "
+      F.pp_print_string fmt "{";
+      F.pp_print_string fmt (String.concat astateEl.finalCalls ~sep:" ");
+      F.pp_print_string fmt "}";
+      if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
     )
   in
 
-  F.fprintf fmt "finalCalls: ";
+  F.pp_print_string fmt "finalCalls: ";
   TSet.iter astate ~f:print_final_calls;
-  F.fprintf fmt "\n"
+  F.pp_print_string fmt "\n"
+
+let call_sequence_add_first_occurrences
+  (callSequence : string list) (firstOccurrences : string list) : string list =
+  let callSequence : string list = callSequence @ firstOccurrences in
+
+  if strings_equal (List.last_exn callSequence) "(" then
+    list_remove_last callSequence
+  else callSequence @ [")"]
 
 let final_calls_add_call_sequence
-  (finalCalls : string list) (callSequence : string list) : string list =
-  let isCallSequenceInFinalCalls : bool =
-    let finalCallsLength : int = List.length finalCalls in
-    let callSequenceLength : int = List.length callSequence in
-
-    if callSequenceLength > finalCallsLength then false
-    else
-    (
-      let i : int ref = ref 0 in
-      let j : int ref = ref 0 in
-
-      while !i < finalCallsLength && not (phys_equal !j callSequenceLength) do
-        let comparedElements : int =
-          String.compare
-            (List.nth_exn finalCalls !i) (List.nth_exn callSequence !j)
-        in
-
-        if phys_equal comparedElements 0 then j := !j + 1
-        else
-        (
-          i := !i - !j;
-          j := 0
-        );
-
-        i := !i + 1
-      done;
-
-      phys_equal !j callSequenceLength
-    )
+  (finalCalls : string list)
+  (callSequence : string list)
+  (firstOccurrences : string list)
+  : string list =
+  let callSequence : string list =
+    call_sequence_add_first_occurrences callSequence firstOccurrences
   in
 
-  if isCallSequenceInFinalCalls then finalCalls else finalCalls @ callSequence
+  if string_list_is_sublist callSequence finalCalls then finalCalls
+  else finalCalls @ callSequence
 
 let update_astate_on_function_call (astate : t) (fn : string) : t =
   let mapper (astateEl : tElement) : tElement =
-    let firstOccurrences : string list =
-      if List.mem astateEl.firstOccurrences fn ~equal:strings_equal then
-        astateEl.firstOccurrences
-      else astateEl.firstOccurrences @ [fn]
-    in
+    if List.mem astateEl.firstOccurrences fn ~equal:strings_equal then astateEl
+    else
+      let firstOccurrences : string list = astateEl.firstOccurrences @ [fn] in
 
-    {astateEl with firstOccurrences= firstOccurrences}
+      {astateEl with firstOccurrences= firstOccurrences}
   in
   TSet.map astate ~f:mapper
 
 let update_astate_on_lock (astate : t) : t =
   let mapper (astateEl : tElement) : tElement =
-    let callSequence : string list =
-      astateEl.callSequence @ astateEl.firstOccurrences @ ["("]
-    in
+    if astateEl.isInLock then astateEl
+    else
+      let callSequence : string list =
+        astateEl.callSequence @ astateEl.firstOccurrences @ ["("]
+      in
 
-    {astateEl with firstOccurrences= []; callSequence= callSequence}
+      { astateEl with
+        firstOccurrences= []
+      ; callSequence= callSequence
+      ; isInLock= true }
   in
   TSet.map astate ~f:mapper
 
 let update_astate_on_unlock (astate : t) : t =
   let mapper (astateEl : tElement) : tElement =
-    if List.is_empty astateEl.callSequence then astateEl
-    else if List.is_empty astateEl.firstOccurrences then
-      {astateEl with callSequence= []}
+    if not astateEl.isInLock then astateEl
     else
-      let callSequence : string list =
-        astateEl.callSequence @ astateEl.firstOccurrences @ [")"]
-      in
       let finalCalls : string list =
-        final_calls_add_call_sequence astateEl.finalCalls callSequence
+        final_calls_add_call_sequence
+          astateEl.finalCalls astateEl.callSequence astateEl.firstOccurrences
       in
 
-      {firstOccurrences= []; callSequence= []; finalCalls= finalCalls}
+      { firstOccurrences= []
+      ; callSequence= []
+      ; finalCalls= finalCalls
+      ; isInLock= false }
   in
   TSet.map astate ~f:mapper
 
@@ -162,33 +185,37 @@ let update_astate_at_the_end_of_function (astate : t) : t =
     let finalCalls : string list =
       if List.is_empty astateEl.callSequence then
         astateEl.finalCalls @ astateEl.firstOccurrences
-      else if List.is_empty astateEl.firstOccurrences then astateEl.finalCalls
       else
-        let callSequence : string list =
-          astateEl.callSequence @ astateEl.firstOccurrences @ [")"]
-        in
-
-        final_calls_add_call_sequence astateEl.finalCalls callSequence
+        final_calls_add_call_sequence
+          astateEl.finalCalls astateEl.callSequence astateEl.firstOccurrences
     in
 
-    {firstOccurrences= []; callSequence= []; finalCalls= finalCalls}
+    { firstOccurrences= []
+    ; callSequence= []
+    ; finalCalls= finalCalls
+    ; isInLock= false }
   in
   TSet.map astate ~f:mapper
 
 (******************************** Summary *************************************)
 
-type summary = {atomicitySequences : (string list) list}
+type summary =
+  { atomicitySequences : (string list) list
+  ; allOccurrences : string list }
 
 let pp_summary (fmt : F.formatter) (summary : summary) : unit =
-  let print_atomicity_sequences (sequence : string list) : unit =
-    F.fprintf fmt "( ";
-    List.iter sequence ~f:(print_string_with_space fmt);
-    F.fprintf fmt ") "
+  let atomicitySequencesLength : int = List.length summary.atomicitySequences in
+  let print_atomicity_sequences (i : int) (sequence : string list) : unit =
+    F.pp_print_string fmt "(";
+    F.pp_print_string fmt (String.concat sequence ~sep:" ");
+    F.pp_print_string fmt ")";
+    if not (phys_equal i (atomicitySequencesLength - 1)) then
+      F.pp_print_string fmt " "
   in
 
-  F.fprintf fmt "atomicitySequences: ";
-  List.iter summary.atomicitySequences ~f:print_atomicity_sequences;
-  F.fprintf fmt "\n"
+  F.pp_print_string fmt "atomicitySequences: ";
+  List.iteri summary.atomicitySequences ~f:print_atomicity_sequences;
+  F.pp_print_string fmt "\n"
 
 let convert_astate_to_summary (astate : t) : summary =
   let atomicitySequences : (string list) list ref = ref [] in
@@ -196,14 +223,13 @@ let convert_astate_to_summary (astate : t) : summary =
   let iterator (astateEl : tElement) : unit =
     let atomicitySequence : string list ref = ref [] in
     let appendToAtomicitySequence : bool ref = ref false in
-
     let iterator (s : string) : unit =
-      if phys_equal (String.compare s "(") 0 then
-        appendToAtomicitySequence := true
-      else if phys_equal (String.compare s ")") 0 then
+      if strings_equal s "(" then appendToAtomicitySequence := true
+      else if strings_equal s ")" then
       (
         let isSequenceInSequences : bool =
-          List.mem !atomicitySequences !atomicitySequence ~equal:lists_equal
+          List.mem
+            !atomicitySequences !atomicitySequence ~equal:string_lists_equal
         in
 
         if not isSequenceInSequences then
@@ -218,7 +244,7 @@ let convert_astate_to_summary (astate : t) : summary =
   in
   TSet.iter astate ~f:iterator;
 
-  {atomicitySequences= !atomicitySequences}
+  {atomicitySequences= !atomicitySequences; allOccurrences= []}
 
 (******************************** Operators ***********************************)
 
