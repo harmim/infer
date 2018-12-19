@@ -9,8 +9,7 @@ module Payload = SummaryPayload.Make (struct
   let update_payloads (payload : t) (payloads : Payloads.t) : Payloads.t =
     {payloads with atomicity= Some payload}
 
-  let of_payloads (payloads : Payloads.t) : t option =
-    payloads.atomicity
+  let of_payloads (payloads : Payloads.t) : t option = payloads.atomicity
 end)
 
 module TransferFunctions (CFG : ProcCfg.S) = struct
@@ -42,11 +41,10 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
       else
         Domain.update_astate_on_function_call astate calleePnameString
 
-    | _ ->
-      astate
+    | _ -> astate
 
   let pp_session_name (_ : CFG.Node.t) (fmt : F.formatter) : unit =
-    F.fprintf fmt "Atomicity"
+    F.pp_print_string fmt "Atomicity"
 end
 
 module Analyzer =
@@ -57,8 +55,9 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
     Typ.Procname.to_string (Procdesc.get_proc_name procArgs.proc_desc)
   in
 
-  F.printf
-    "::::::::::::::::::::::::: function %s START :::::::::::::::::::::::::\n"
+  F.fprintf
+    F.std_formatter
+    "\n::::::::::::::::::::::::: Function %s START :::::::::::::::::::::::::\n"
     procNameString;
 
   match Analyzer.compute_post
@@ -75,8 +74,9 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
 
     Domain.pp F.std_formatter updatedPost;
     Domain.pp_summary F.std_formatter convertedSummary;
-    F.printf
-      "::::::::::::::::::::::::: function %s END :::::::::::::::::::::::::\n\n"
+    F.fprintf
+      F.std_formatter
+      "::::::::::::::::::::::::: Function %s END :::::::::::::::::::::::::\n\n"
       procNameString;
 
     Payload.update_summary convertedSummary procArgs.summary
@@ -87,5 +87,4 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
       "Atomicity analysis failed to compute post for %s."
       procNameString
 
-let reporting (_ : Callbacks.cluster_callback_args) : unit =
-  F.printf ""
+let reporting (_ : Callbacks.cluster_callback_args) : unit = ()
