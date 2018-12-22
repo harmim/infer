@@ -1,10 +1,9 @@
 open! IStd
 module F = Format
-module L = Logging
-module Domain = AtomicityDomain
+module D = AtomicityDomain
 
 module Payload = SummaryPayload.Make (struct
-  type t = Domain.summary
+  type t = D.summary
 
   let update_payloads (payload : t) (payloads : Payloads.t) : Payloads.t =
     {payloads with atomicity= Some payload}
@@ -14,16 +13,16 @@ end)
 
 module TransferFunctions (CFG : ProcCfg.S) = struct
   module CFG = CFG
-  module Domain = Domain
+  module Domain = D
 
   type extras = ProcData.no_extras
 
   let exec_instr
-    (astate : Domain.t)
+    (astate : D.t)
     (procData : extras ProcData.t)
     (_ : CFG.Node.t)
     (instr : HilInstr.t)
-    : Domain.t =
+    : D.t =
     match instr with
     | Call (
       (_ : AccessPath.base),
@@ -34,19 +33,18 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     ) ->
       let calleePnameString : string = Typ.Procname.to_string calleePname in
 
-      if Domain.is_lock calleePnameString then
-        Domain.update_astate_on_lock astate
-      else if Domain.is_unlock calleePnameString then
-        Domain.update_astate_on_unlock astate
+      if D.is_lock calleePnameString then D.update_astate_on_lock astate
+      else if D.is_unlock calleePnameString then
+        D.update_astate_on_unlock astate
       else
       (
-        let astate : Domain.t =
-          Domain.update_astate_on_function_call astate calleePnameString
+        let astate : D.t =
+          D.update_astate_on_function_call astate calleePnameString
         in
 
         match Payload.read procData.pdesc calleePname with
-        | Some (summary : Domain.summary) ->
-          Domain.update_astate_on_function_call_with_summary astate summary
+        | Some (summary : D.summary) ->
+          D.update_astate_on_function_call_with_summary astate summary
         | None -> astate
       )
     | _ -> astate
@@ -64,26 +62,23 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
   in
 
   match Analyzer.compute_post
-    (ProcData.make_default procArgs.proc_desc procArgs.tenv)
-    ~initial:Domain.initial
+    (ProcData.make_default procArgs.proc_desc procArgs.tenv) ~initial:D.initial
   with
-  | Some (post : Domain.t) ->
-    let updatedPost : Domain.t =
-      Domain.update_astate_at_the_end_of_function post
-    in
-    let convertedSummary : Domain.summary =
-      Domain.convert_astate_to_summary updatedPost
+  | Some (post : D.t) ->
+    let updatedPost : D.t = D.update_astate_at_the_end_of_function post in
+    let convertedSummary : D.summary =
+      D.convert_astate_to_summary updatedPost
     in
 
     F.fprintf F.std_formatter "Function: %s\n" procNameString;
-    Domain.pp F.std_formatter updatedPost;
-    Domain.pp_summary F.std_formatter convertedSummary;
+    D.pp F.std_formatter updatedPost;
+    D.pp_summary F.std_formatter convertedSummary;
     F.fprintf F.std_formatter "\n\n";
 
     Payload.update_summary convertedSummary procArgs.summary
   | None ->
-    L.die
-      L.InternalError
+    Logging.die
+      Logging.InternalError
       "Atomicity analysis failed to compute post for %s."
       procNameString
 
