@@ -1,14 +1,16 @@
 open! IStd
 module F = Format
+module L = List
+module S = String
 
 (******************************** Functions ***********************************)
 
 let strings_equal (s1 : string) (s2 : string) : bool =
-  phys_equal (String.compare s1 s2) 0
+  phys_equal (S.compare s1 s2) 0
 
 let lists_equal
   (l1 : 'a list) (l2 : 'b list) (cmp : ('a -> 'b -> bool)) : bool =
-  if not (phys_equal (List.length l1) (List.length l2)) then false
+  if not (phys_equal (L.length l1) (L.length l2)) then false
   else
   (
     let eq : bool ref = ref true in
@@ -16,7 +18,7 @@ let lists_equal
     let iterator (e1 : 'a) (e2 : 'b) : unit =
       if not (cmp e1 e2) then eq := false
     in
-    List.iter2_exn l1 l2 ~f:iterator;
+    L.iter2_exn l1 l2 ~f:iterator;
 
     !eq
   )
@@ -25,24 +27,22 @@ let string_lists_equal (l1 : string list) (l2 : string list) : bool =
   lists_equal l1 l2 strings_equal
 
 let list_remove_last (l : 'a list) : 'a list =
-  let lLength : int = List.length l in
+  let lLength : int = L.length l in
 
   let filter (i : int) (_ : 'a) : bool = not (phys_equal i (lLength - 1)) in
-  List.filteri l ~f:filter
+  L.filteri l ~f:filter
 
 let list_is_sublist
   (l1 : 'a list) (l2 : 'b list) (cmp : ('a -> 'b -> bool)) : bool =
-  let l1Length : int = List.length l1 in
-  let l2Length : int = List.length l2 in
+  let l1Length : int = L.length l1 and l2Length : int = L.length l2 in
 
   if l1Length > l2Length then false
   else
   (
-    let i : int ref = ref 0 in
-    let j : int ref = ref 0 in
+    let i : int ref = ref 0 and j : int ref = ref 0 in
 
     while !i < l2Length && not (phys_equal !j l1Length) do
-      if cmp (List.nth_exn l2 !i) (List.nth_exn l1 !j) then j := !j + 1
+      if cmp (L.nth_exn l2 !i) (L.nth_exn l1 !j) then j := !j + 1
       else
       (
         i := !i - !j;
@@ -59,7 +59,7 @@ let string_list_is_sublist (l1 : string list) (l2 : string list) : bool =
   list_is_sublist l1 l2 strings_equal
 
 let list_add_unique (l : 'a list) (e : 'a) (eq : ('a -> 'a -> bool)) : 'a list =
-  if List.mem l e ~equal:eq then l else l @ [e]
+  if L.mem l e ~equal:eq then l else l @ [e]
 
 let string_list_add_unique (l : string list) (s : string) : string list =
   list_add_unique l s strings_equal
@@ -87,14 +87,13 @@ module TSet = Set.Make (struct
     then 0
     else
       let e1Length : int =
-        List.length e1.firstOccurrences +
-        List.length e1.callSequence +
-        List.length e1.finalCalls
-      in
-      let e2Length : int =
-        List.length e2.firstOccurrences +
-        List.length e2.callSequence +
-        List.length e2.finalCalls
+        L.length e1.firstOccurrences +
+        L.length e1.callSequence +
+        L.length e1.finalCalls
+      and e2Length : int =
+        L.length e2.firstOccurrences +
+        L.length e2.callSequence +
+        L.length e2.finalCalls
       in
 
       if e1Length >= e2Length then 1 else -1
@@ -112,10 +111,10 @@ let initial : t =
 let pp (fmt : F.formatter) (astate : t) : unit =
   let lastAstateEl : tElement = TSet.max_elt_exn astate in
   let print_final_calls (astateEl : tElement) : unit =
-    if not (List.is_empty astateEl.finalCalls) then
+    if not (L.is_empty astateEl.finalCalls) then
     (
       F.pp_print_string
-        fmt ("{" ^ (String.concat astateEl.finalCalls ~sep:" ") ^ "}");
+        fmt ("{" ^ (S.concat astateEl.finalCalls ~sep:" ") ^ "}");
       if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
     )
   in
@@ -127,7 +126,7 @@ let call_sequence_add_first_occurrences
   (callSequence : string list) (firstOccurrences : string list) : string list =
   let callSequence : string list = callSequence @ firstOccurrences in
 
-  if strings_equal (List.last_exn callSequence) "(" then
+  if strings_equal (L.last_exn callSequence) "(" then
     list_remove_last callSequence
   else callSequence @ [")"]
 
@@ -187,7 +186,7 @@ let update_astate_on_unlock (astate : t) : t =
 let update_astate_at_the_end_of_function (astate : t) : t =
   let mapper (astateEl : tElement) : tElement =
     let finalCalls : string list =
-      if List.is_empty astateEl.callSequence then
+      if L.is_empty astateEl.callSequence then
         astateEl.finalCalls @ astateEl.firstOccurrences
       else
         final_calls_add_call_sequence
@@ -207,25 +206,23 @@ type summary =
   {atomicitySequences : (string list) list; allOccurrences : string list}
 
 let pp_summary (fmt : F.formatter) (summary : summary) : unit =
-  let atomicitySequencesLength : int = List.length summary.atomicitySequences in
+  let atomicitySequencesLength : int = L.length summary.atomicitySequences in
   let print_atomicity_sequences (i : int) (sequence : string list) : unit =
-    F.pp_print_string fmt ("(" ^ (String.concat sequence ~sep:" ") ^ ")");
+    F.pp_print_string fmt ("(" ^ (S.concat sequence ~sep:" ") ^ ")");
     if not (phys_equal i (atomicitySequencesLength - 1)) then
       F.pp_print_string fmt " "
   in
   F.pp_print_string fmt "atomicitySequences: ";
-  List.iteri summary.atomicitySequences ~f:print_atomicity_sequences;
+  L.iteri summary.atomicitySequences ~f:print_atomicity_sequences;
   F.pp_print_string fmt "\n";
 
   F.pp_print_string
     fmt
-    ( "allOccurrences: "
-    ^ (String.concat summary.allOccurrences ~sep:" ")
-    ^ "\n" )
+    ( "allOccurrences: " ^ (S.concat summary.allOccurrences ~sep:" ") ^ "\n" )
 
 let update_astate_on_function_call_with_summary
   (astate : t) (summary : summary) : t =
-  if List.is_empty summary.allOccurrences then astate
+  if L.is_empty summary.allOccurrences then astate
   else
     let mapper (astateEl : tElement) : tElement =
       let firstOccurrences : string list ref = ref astateEl.firstOccurrences in
@@ -233,19 +230,19 @@ let update_astate_on_function_call_with_summary
       let iterator (f : string) : unit =
         firstOccurrences := string_list_add_unique !firstOccurrences f
       in
-      List.iter summary.allOccurrences ~f:iterator;
+      L.iter summary.allOccurrences ~f:iterator;
 
       {astateEl with firstOccurrences= !firstOccurrences}
     in
     TSet.map astate ~f:mapper
 
 let convert_astate_to_summary (astate : t) : summary =
-  let atomicitySequences : (string list) list ref = ref [] in
-  let allOccurrences : string list ref = ref [] in
+  let atomicitySequences : (string list) list ref = ref []
+  and allOccurrences : string list ref = ref [] in
 
   let iterator (astateEl : tElement) : unit =
-    let atomicitySequence : string list ref = ref [] in
-    let appendToAtomicitySequence : bool ref = ref false in
+    let atomicitySequence : string list ref = ref []
+    and appendToAtomicitySequence : bool ref = ref false in
 
     let iterator (s : string) : unit =
       if strings_equal s "(" then appendToAtomicitySequence := true
@@ -264,7 +261,7 @@ let convert_astate_to_summary (astate : t) : summary =
           atomicitySequence := !atomicitySequence @ [s]
       )
     in
-    List.iter astateEl.finalCalls ~f:iterator
+    L.iter astateEl.finalCalls ~f:iterator
   in
   TSet.iter astate ~f:iterator;
 
