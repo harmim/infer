@@ -20,7 +20,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
 
   let exec_instr
     (astate : Domain.t)
-    (_ : extras ProcData.t)
+    (procData : extras ProcData.t)
     (_ : CFG.Node.t)
     (instr : HilInstr.t)
     : Domain.t =
@@ -39,8 +39,16 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
       else if Domain.is_unlock calleePnameString then
         Domain.update_astate_on_unlock astate
       else
-        Domain.update_astate_on_function_call astate calleePnameString
+      (
+        let astate : Domain.t =
+          Domain.update_astate_on_function_call astate calleePnameString
+        in
 
+        match Payload.read procData.pdesc calleePname with
+        | Some (summary : Domain.summary) ->
+          Domain.update_astate_on_function_call_with_summary astate summary
+        | None -> astate
+      )
     | _ -> astate
 
   let pp_session_name (_ : CFG.Node.t) (fmt : F.formatter) : unit =
@@ -55,11 +63,6 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
     Typ.Procname.to_string (Procdesc.get_proc_name procArgs.proc_desc)
   in
 
-  F.fprintf
-    F.std_formatter
-    "\n::::::::::::::::::::::::: Function %s START :::::::::::::::::::::::::\n"
-    procNameString;
-
   match Analyzer.compute_post
     (ProcData.make_default procArgs.proc_desc procArgs.tenv)
     ~initial:Domain.initial
@@ -72,15 +75,12 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
       Domain.convert_astate_to_summary updatedPost
     in
 
+    F.fprintf F.std_formatter "Function: %s\n" procNameString;
     Domain.pp F.std_formatter updatedPost;
     Domain.pp_summary F.std_formatter convertedSummary;
-    F.fprintf
-      F.std_formatter
-      "::::::::::::::::::::::::: Function %s END :::::::::::::::::::::::::\n\n"
-      procNameString;
+    F.fprintf F.std_formatter "\n\n";
 
     Payload.update_summary convertedSummary procArgs.summary
-
   | None ->
     L.die
       L.InternalError
