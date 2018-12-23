@@ -85,7 +85,7 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
     F.fprintf F.std_formatter "Function: %s\n" procNameString;
     D.pp F.std_formatter updatedPost;
     D.pp_summary F.std_formatter convertedSummary;
-    F.fprintf F.std_formatter "\n\n";
+    F.pp_print_string F.std_formatter "\n\n";
 
     Payload.update_summary convertedSummary procArgs.summary
   | None ->
