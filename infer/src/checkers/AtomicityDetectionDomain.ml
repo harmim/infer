@@ -1,15 +1,18 @@
+(** Atomicity detection domain implementation. *)
+
 open! IStd
 module F = Format
 module L = List
 module S = String
 
-(******************************** Functions ***********************************)
+(* ****************************** Functions ********************************* *)
 
 let strings_equal (s1 : string) (s2 : string) : bool =
   phys_equal (S.compare s1 s2) 0
 
 let lists_equal
   (l1 : 'a list) (l2 : 'b list) (cmp : ('a -> 'b -> bool)) : bool =
+  (* Length of lists and theirs elements must be equal. *)
   if not (phys_equal (L.length l1) (L.length l2)) then false
   else
   (
@@ -68,14 +71,16 @@ let is_lock (f : string) : bool = strings_equal f "pthread_mutex_lock"
 
 let is_unlock (f : string) : bool = strings_equal f "pthread_mutex_unlock"
 
-(******************************** Astate **************************************)
+(* ****************************** Astate ************************************ *)
 
+(** Element of abstract state. *)
 type tElement =
   { firstOccurrences : string list
   ; callSequence : string list
   ; finalCalls : string list
   ; isInLock : bool } [@@ deriving sexp]
 
+(** Set of type tElement is abstract state. *)
 module TSet = Set.Make (struct
   type t = tElement [@@ deriving sexp]
 
@@ -102,6 +107,7 @@ end)
 type t = TSet.t
 
 let initial : t =
+  (* Initial abstract state is set with single empty element. *)
   TSet.singleton
     { firstOccurrences : string list= []
     ; callSequence : string list= []
@@ -126,6 +132,8 @@ let call_sequence_add_first_occurrences
   (callSequence : string list) (firstOccurrences : string list) : string list =
   let callSequence : string list = callSequence @ firstOccurrences in
 
+  (* If atomicity sequence is callSequence is empty, then remove
+     character '(', otherwise close sequence with adding character ')'. *)
   if strings_equal (L.last_exn callSequence) "(" then
     list_remove_last callSequence
   else callSequence @ [")"]
@@ -139,15 +147,19 @@ let final_calls_add_call_sequence
     call_sequence_add_first_occurrences callSequence firstOccurrences
   in
 
+  (* Add callSequence to finalCalls only if there is no such sequence yet. *)
   if string_list_is_sublist callSequence finalCalls then finalCalls
   else finalCalls @ callSequence
 
 let update_astate_on_function_call (astate : t) (f : string) : t =
   let mapper (astateEl : tElement) : tElement =
       let firstOccurrences : string list =
+        (* Add function name to firstOccurrences only if there is no
+           such funcion yet. *)
         string_list_add_unique astateEl.firstOccurrences f
       in
 
+      (* Update firstOccurrences. *)
       {astateEl with firstOccurrences= firstOccurrences}
   in
   TSet.map astate ~f:mapper
@@ -160,6 +172,7 @@ let update_astate_on_lock (astate : t) : t =
         astateEl.callSequence @ astateEl.firstOccurrences @ ["("]
       in
 
+      (* Clear firstOccurrences, update callSequence and set isInLock. *)
       { astateEl with
         firstOccurrences= []
       ; callSequence= callSequence
@@ -176,6 +189,8 @@ let update_astate_on_unlock (astate : t) : t =
           astateEl.finalCalls astateEl.callSequence astateEl.firstOccurrences
       in
 
+      (* Clear firstOccurrences and callSequence, update finalCalls
+         and unset isInLock. *)
       { firstOccurrences= []
       ; callSequence= []
       ; finalCalls= finalCalls
@@ -186,6 +201,9 @@ let update_astate_on_unlock (astate : t) : t =
 let update_astate_at_the_end_of_function (astate : t) : t =
   let mapper (astateEl : tElement) : tElement =
     let finalCalls : string list =
+      (* If callSequence is empty, add firstOccurrences to finalCalls,
+         otherwise update callSequence with firstOccurrences and add
+         it to finaclCalls. *)
       if L.is_empty astateEl.callSequence then
         astateEl.finalCalls @ astateEl.firstOccurrences
       else
@@ -193,6 +211,8 @@ let update_astate_at_the_end_of_function (astate : t) : t =
           astateEl.finalCalls astateEl.callSequence astateEl.firstOccurrences
     in
 
+    (* Clear firstOccurrences and callSequence, update finalCalls
+       and unset isInLock. *)
     { firstOccurrences= []
     ; callSequence= []
     ; finalCalls= finalCalls
@@ -200,7 +220,7 @@ let update_astate_at_the_end_of_function (astate : t) : t =
   in
   TSet.map astate ~f:mapper
 
-(******************************** Summary *************************************)
+(* ****************************** Summary *********************************** *)
 
 type summary =
   {atomicitySequences : (string list) list; allOccurrences : string list}
@@ -222,6 +242,8 @@ let pp_summary (fmt : F.formatter) (summary : summary) : unit =
 
 let update_astate_on_function_call_with_summary
   (astate : t) (summary : summary) : t =
+  (* Add allOccurrences from given summary to firstOccurrences of each
+     element of abstract state. *)
   if L.is_empty summary.allOccurrences then astate
   else
     let mapper (astateEl : tElement) : tElement =
@@ -237,6 +259,8 @@ let update_astate_on_function_call_with_summary
     TSet.map astate ~f:mapper
 
 let convert_astate_to_summary (astate : t) : summary =
+  (* Derivates atomicitySequences and allOccurrences from finalCalls
+     of elements of abstract state. *)
   let atomicitySequences : (string list) list ref = ref []
   and allOccurrences : string list ref = ref [] in
 
@@ -267,16 +291,19 @@ let convert_astate_to_summary (astate : t) : summary =
 
   {atomicitySequences= !atomicitySequences; allOccurrences= !allOccurrences}
 
-(******************************** Operators ***********************************)
+(* ****************************** Operators ********************************* *)
 
 let ( <= ) ~lhs:(l : t) ~rhs:(r : t) : bool =
+  (* lhs <= rhs if lhs is subset of rhs. *)
   if phys_equal l r then true else TSet.is_subset l ~of_:r
 
 let join (astate1 : t) (astate2 : t) : t =
+  (* Union of abstract states. *)
   if phys_equal astate1 astate2 then astate1
   else if TSet.is_empty astate1 then astate2
   else if TSet.is_empty astate2 then astate1
   else TSet.union astate1 astate2
 
 let widen ~prev:(p : t) ~next:(n : t) ~num_iters:(_ : int) : t =
+  (* Join previous and next abstract states. *)
   join p n

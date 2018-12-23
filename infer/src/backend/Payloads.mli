@@ -24,7 +24,7 @@ type t =
   ; starvation: StarvationDomain.summary option
   ; typestate: TypeState.t option
   ; uninit: UninitDomain.Summary.t option
-  ; atomicity: AtomicityDomain.summary option }
+  ; atomicityDetection: AtomicityDetectionDomain.summary option }
 
 val pp : Pp.env -> Format.formatter -> t -> unit
 

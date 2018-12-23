@@ -24,7 +24,7 @@ type t =
   ; starvation: StarvationDomain.summary option
   ; typestate: TypeState.t option
   ; uninit: UninitDomain.Summary.t option
-  ; atomicity: AtomicityDomain.summary option }
+  ; atomicityDetection: AtomicityDetectionDomain.summary option }
 
 let pp pe fmt
     { annot_map
@@ -42,7 +42,7 @@ let pp pe fmt
     ; starvation
     ; typestate
     ; uninit
-    ; atomicity } =
+    ; atomicityDetection } =
   let pp_opt prefix pp fmt = function
     | Some x ->
         F.fprintf fmt "%s: %a@\n" prefix pp x
@@ -76,8 +76,8 @@ let pp pe fmt
     purity
     (pp_opt "Resource Leaks Lab" ResourceLeakDomain.pp)
     lab_resource_leaks
-    (pp_opt "Atomicity" AtomicityDomain.pp_summary)
-    atomicity
+    (pp_opt "AtomicityDetection" AtomicityDetectionDomain.pp_summary)
+    atomicityDetection
 
 
 let empty =
@@ -96,4 +96,4 @@ let empty =
   ; starvation= None
   ; typestate= None
   ; uninit= None
-  ; atomicity= None }
+  ; atomicityDetection= None }
