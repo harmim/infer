@@ -132,7 +132,7 @@ let call_sequence_add_first_occurrences
   (callSequence : string list) (firstOccurrences : string list) : string list =
   let callSequence : string list = callSequence @ firstOccurrences in
 
-  (* If atomicity sequence is callSequence is empty, then remove
+  (* If atomicity sequence in callSequence is empty, then remove
      character '(', otherwise close sequence with adding character ')'. *)
   if strings_equal (L.last_exn callSequence) "(" then
     list_remove_last callSequence
@@ -166,6 +166,7 @@ let update_astate_on_function_call (astate : t) (f : string) : t =
 
 let update_astate_on_lock (astate : t) : t =
   let mapper (astateEl : tElement) : tElement =
+    (* Ignore lock call if abstract state is already in lock. *)
     if astateEl.isInLock then astateEl
     else
       let callSequence : string list =
@@ -182,6 +183,7 @@ let update_astate_on_lock (astate : t) : t =
 
 let update_astate_on_unlock (astate : t) : t =
   let mapper (astateEl : tElement) : tElement =
+    (* Ignore unlock call if abstract state is not in lock. *)
     if not astateEl.isInLock then astateEl
     else
       let finalCalls : string list =
@@ -238,7 +240,7 @@ let pp_summary (fmt : F.formatter) (summary : summary) : unit =
 
   F.pp_print_string
     fmt
-    ( "allOccurrences: " ^ (S.concat summary.allOccurrences ~sep:" ") ^ "\n" )
+    ("allOccurrences: " ^ (S.concat summary.allOccurrences ~sep:" ") ^ "\n")
 
 let update_astate_on_function_call_with_summary
   (astate : t) (summary : summary) : t =
