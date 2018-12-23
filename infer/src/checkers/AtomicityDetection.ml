@@ -1,21 +1,26 @@
+(** Atomicity detection implementation. *)
+
 open! IStd
 module F = Format
-module D = AtomicityDomain
+module D = AtomicityDetectionDomain (* Domain definition. *)
 
+(** Summary payload for analyzed functions. *)
 module Payload = SummaryPayload.Make (struct
-  type t = D.summary
+  type t = D.summary (* Type of payload is domain summary. *)
 
   let update_payloads (payload : t) (payloads : Payloads.t) : Payloads.t =
-    {payloads with atomicity= Some payload}
+    {payloads with atomicityDetection= Some payload}
 
-  let of_payloads (payloads : Payloads.t) : t option = payloads.atomicity
+  let of_payloads (payloads : Payloads.t) : t option =
+    payloads.atomicityDetection
 end)
 
+(** Transfer function for abstract states of analyzed function. *)
 module TransferFunctions (CFG : ProcCfg.S) = struct
   module CFG = CFG
   module Domain = D
 
-  type extras = ProcData.no_extras
+  type extras = ProcData.no_extras (* No extras needed. *)
 
   let exec_instr
     (astate : D.t)
@@ -24,6 +29,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     (instr : HilInstr.t)
     : D.t =
     match instr with
+    (* Update abstract state on functions calls. *)
     | Call (
       (_ : AccessPath.base),
       (Direct (calleePname : Typ.Procname.t) : HilInstr.call),
@@ -42,6 +48,8 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
           D.update_astate_on_function_call astate calleePnameString
         in
 
+        (* Update abstract state with function summary as well, if it is
+           possible. *)
         match Payload.read procData.pdesc calleePname with
         | Some (summary : D.summary) ->
           D.update_astate_on_function_call_with_summary astate summary
@@ -50,9 +58,10 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     | _ -> astate
 
   let pp_session_name (_ : CFG.Node.t) (fmt : F.formatter) : unit =
-    F.pp_print_string fmt "Atomicity"
+    F.pp_print_string fmt "Atomicity detection"
 end
 
+(** Analyzer definition. *)
 module Analyzer =
   LowerHil.MakeAbstractInterpreter (TransferFunctions (ProcCfg.Normal))
 
@@ -61,10 +70,13 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
     Typ.Procname.to_string (Procdesc.get_proc_name procArgs.proc_desc)
   in
 
+  (* Compute abstract state for given function. *)
   match Analyzer.compute_post
     (ProcData.make_default procArgs.proc_desc procArgs.tenv) ~initial:D.initial
   with
   | Some (post : D.t) ->
+    (* Update abstract state at the end of function and convert
+       abstract state to function summary. *)
     let updatedPost : D.t = D.update_astate_at_the_end_of_function post in
     let convertedSummary : D.summary =
       D.convert_astate_to_summary updatedPost
@@ -79,7 +91,7 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
   | None ->
     Logging.die
       Logging.InternalError
-      "Atomicity analysis failed to compute post for %s."
+      "Atomicity detection failed to compute post for %s."
       procNameString
 
 let reporting (_ : Callbacks.cluster_callback_args) : unit = ()

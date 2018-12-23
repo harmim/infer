@@ -154,8 +154,8 @@ let all_checkers =
   ; { name= "Atomicity violations analysis"
     ; active= Config.is_checker_enabled Atomicity
     ; callbacks=
-      [ (Procedure Atomicity.checker, Language.Clang)
-      ; (Cluster Atomicity.reporting, Language.Clang) ] } ]
+      [ (Procedure AtomicityDetection.checker, Language.Clang)
+      ; (Cluster AtomicityDetection.reporting, Language.Clang) ] } ]
 
 let get_active_checkers () =
   let filter_checker {active} = active in
