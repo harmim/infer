@@ -43,7 +43,7 @@ val pp_summary : F.formatter -> summary -> unit
 (** Pretty printer of summary. *)
 
 val update_astate_on_function_call_with_summary : t -> summary -> t
-(** Updates abstract state on function call with with its summary. *)
+(** Updates abstract state on function call with its summary. *)
 
 val convert_astate_to_summary : t -> summary
 (** Converts abstract state to summary. *)
@@ -54,7 +54,7 @@ val ( <= ) : lhs:t -> rhs:t -> bool
 (** Comparison operator of abstract states. *)
 
 val join : t -> t -> t
-(** Join operator of abstract states.  *)
+(** Join operator of abstract states. *)
 
 val widen : prev:t -> next:t -> num_iters:int -> t
-(** Widen operator of abstract states.  *)
+(** Widen operator of abstract states. *)
