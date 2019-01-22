@@ -4,6 +4,7 @@ open! IStd
 module F = Format
 module L = List
 module S = String
+module OC = Out_channel
 
 (* ****************************** Functions ********************************* *)
 
@@ -292,6 +293,19 @@ let convert_astate_to_summary (astate : t) : summary =
   TSet.iter astate ~f:iterator;
 
   {atomicitySequences= !atomicitySequences; allOccurrences= !allOccurrences}
+
+(* ****************************** Reporting ********************************* *)
+
+let report (oc : OC.t) (f : string) (summary : summary) : unit =
+  OC.output_string oc (f ^ ": ");
+  let atomicitySequencesLength : int = L.length summary.atomicitySequences in
+  let print_atomicity_sequences (i : int) (sequence : string list) : unit =
+    OC.output_string oc ("(" ^ (S.concat sequence ~sep:" ") ^ ")");
+    if not (phys_equal i (atomicitySequencesLength - 1)) then
+      OC.output_string oc " "
+  in
+  L.iteri summary.atomicitySequences ~f:print_atomicity_sequences;
+  OC.newline oc
 
 (* ****************************** Operators ********************************* *)
 
