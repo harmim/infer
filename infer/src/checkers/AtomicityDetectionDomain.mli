@@ -2,6 +2,7 @@
 
 open! IStd
 module F = Format
+module OC = Out_channel
 
 (* ****************************** Functions ********************************* *)
 
@@ -47,6 +48,12 @@ val update_astate_on_function_call_with_summary : t -> summary -> t
 
 val convert_astate_to_summary : t -> summary
 (** Converts abstract state to summary. *)
+
+(* ****************************** Reporting ********************************* *)
+
+val report : OC.t -> string -> summary -> unit
+(** Prints atomicity sequences from given summary and function name
+    to given output channel. *)
 
 (* ****************************** Operators ********************************* *)
 

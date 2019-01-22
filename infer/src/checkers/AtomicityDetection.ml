@@ -3,6 +3,8 @@
 open! IStd
 module F = Format
 module D = AtomicityDetectionDomain (* Domain definition. *)
+module Procname = Typ.Procname
+module OC = Out_channel
 
 (** Summary payload for analyzed functions. *)
 module Payload = SummaryPayload.Make (struct
@@ -32,12 +34,12 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     (* Update abstract state on functions calls. *)
     | Call (
       (_ : AccessPath.base),
-      (Direct (calleePname : Typ.Procname.t) : HilInstr.call),
+      (Direct (calleePname : Procname.t) : HilInstr.call),
       (_ : HilExp.t list),
       (_ : CallFlags.t),
       (_ : Location.t)
     ) ->
-      let calleePnameString : string = Typ.Procname.to_string calleePname in
+      let calleePnameString : string = Procname.to_string calleePname in
 
       if D.is_lock calleePnameString then D.update_astate_on_lock astate
       else if D.is_unlock calleePnameString then
@@ -67,7 +69,7 @@ module Analyzer =
 
 let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
   let procNameString : string =
-    Typ.Procname.to_string (Procdesc.get_proc_name procArgs.proc_desc)
+    Procname.to_string (Procdesc.get_proc_name procArgs.proc_desc)
   in
 
   (* Compute abstract state for given function. *)
@@ -82,16 +84,37 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
       D.convert_astate_to_summary updatedPost
     in
 
-    F.fprintf F.std_formatter "Function: %s\n" procNameString;
-    D.pp F.std_formatter updatedPost;
-    D.pp_summary F.std_formatter convertedSummary;
-    F.pp_print_string F.std_formatter "\n\n";
+    let fmt : F.formatter = F.str_formatter
+    and _ : string = F.flush_str_formatter () in
+    F.fprintf fmt "\n\nFunction: %s\n" procNameString;
+    D.pp fmt updatedPost;
+    D.pp_summary fmt convertedSummary;
+    F.pp_print_string fmt "\n";
+    Logging.(debug Capture Verbose) "%s" (F.flush_str_formatter ());
 
     Payload.update_summary convertedSummary procArgs.summary
   | None ->
-    Logging.die
-      Logging.InternalError
-      "Atomicity detection failed to compute post for %s."
-      procNameString
+    Logging.(die InternalError)
+      "Atomicity detection failed to compute post for %s." procNameString
 
-let reporting (_ : Callbacks.cluster_callback_args) : unit = ()
+let reporting (clusterArgs : Callbacks.cluster_callback_args) : unit =
+  let dir : string =
+    Escape.escape_filename (CommandLineOption.init_work_dir ^ "/infer-out")
+  in
+  Utils.create_dir dir;
+
+  let oc : OC.t = OC.create ~binary:false (dir ^ "/atomicity-detection") in
+  let iterator ((_ : Tenv.t), (procDesc : Procdesc.t)) : unit =
+    let procName : Procname.t = Procdesc.get_proc_name procDesc in
+    let iterator (summary : D.summary) : unit =
+      D.report oc (Procname.to_string procName) summary
+    in
+    Option.iter (Payload.read procDesc procName) ~f:iterator
+  in
+  List.iter clusterArgs.procedures ~f:iterator;
+  OC.close oc;
+
+  F.pp_print_string
+    F.std_formatter
+    ("Atomicity detection produced output (atomicity sequences) into " ^
+     "'./infer-out/atomicity-detection' file.\n")
