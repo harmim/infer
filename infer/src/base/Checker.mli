@@ -33,7 +33,8 @@ type t =
   | SelfInBlock
   | Starvation
   | Uninit
-  | Atomicity
+  | AtomicSequences
+  | AtomicityViolations
 [@@deriving equal, enumerate]
 
 (** per-language support for each checker *)

@@ -151,11 +151,15 @@ let all_checkers =
   ; { name= "Self captured in block checker"
     ; active= Config.is_checker_enabled SelfInBlock
     ; callbacks= [(Procedure SelfInBlock.checker, Language.Clang)] }
-  ; { name= "Atomicity violations analysis"
-    ; active= Config.is_checker_enabled Atomicity
+  ; { name= "Atomicity violations analysis - detection of atomic sequences"
+    ; active= Config.is_checker_enabled AtomicSequences
     ; callbacks=
-      [ (Procedure AtomicityDetection.checker, Language.Clang)
-      ; (Cluster AtomicityDetection.reporting, Language.Clang) ] } ]
+      [ (Procedure AtomicSequences.analyze_procedure, Language.Clang)
+      ; (Cluster AtomicSequences.print_atomic_sequences, Language.Clang) ] }
+  ; { name= "Atomicity violations analysis - detection of atomicity violations"
+    ; active= Config.is_checker_enabled AtomicityViolations
+    ; callbacks=
+      [(Procedure AtomicityViolations.analyze_procedure, Language.Clang)] } ]
 
 let get_active_checkers () =
   let filter_checker {active} = active in

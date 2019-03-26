@@ -1,6 +1,8 @@
-(** Atomicity detection domain implementation. *)
+(** Detection of atomic sequences domain implementation. *)
 
 open! IStd
+open AtomicityUtils
+
 module F = Format
 module L = List
 module S = String
@@ -8,10 +10,6 @@ module OC = Out_channel
 module P = Pervasives
 
 (* ****************************** Functions ********************************* *)
-
-(** Checks whether strings are equal. *)
-let strings_equal (s1 : string) (s2 : string) : bool =
-  phys_equal (S.compare s1 s2) 0
 
 (** Checks whether lists are equal. *)
 let lists_equal
@@ -23,8 +21,8 @@ let lists_equal
     let eq : bool ref = ref true in
 
     L.iter2_exn
-      l1 l2 ~f:(fun (e1 : 'a) (e2 : 'a) : unit ->
-        if not (cmp e1 e2) then eq := false);
+      l1 l2 ~f:( fun (e1 : 'a) (e2 : 'a) : unit ->
+        if not (cmp e1 e2) then eq := false );
 
     !eq
   )
@@ -52,10 +50,6 @@ let string_list_add_unique (l : string list) (s : string) : string list =
 let string_list_list_add_unique
   (ll : (string list) list) (l : string list) : (string list) list =
   list_add_unique ll l string_lists_equal
-
-let is_lock (f : string) : bool = strings_equal f "pthread_mutex_lock"
-
-let is_unlock (f : string) : bool = strings_equal f "pthread_mutex_unlock"
 
 (* ****************************** Astate ************************************ *)
 
@@ -252,17 +246,17 @@ let update_astate_at_the_end_of_function (astate : t) : t =
 (* ****************************** Summary *********************************** *)
 
 type summary =
-  {atomicitySequences : (string list) list; allOccurrences : string list}
+  {atomicSequences : (string list) list; allOccurrences : string list}
 
 let pp_summary (fmt : F.formatter) (summary : summary) : unit =
-  let atomicitySequencesLength : int = L.length summary.atomicitySequences in
-  let print_atomicity_sequence (i : int) (sequence : string list) : unit =
+  let atomicSequencesLength : int = L.length summary.atomicSequences in
+  let print_atomic_sequence (i : int) (sequence : string list) : unit =
     F.pp_print_string fmt ("(" ^ (S.concat sequence ~sep:" ") ^ ")");
-    if not (phys_equal i (atomicitySequencesLength - 1)) then
+    if not (phys_equal i (atomicSequencesLength - 1)) then
       F.pp_print_string fmt " "
   in
-  F.pp_print_string fmt "atomicitySequences: ";
-  L.iteri summary.atomicitySequences ~f:print_atomicity_sequence;
+  F.pp_print_string fmt "atomicSequences: ";
+  L.iteri summary.atomicSequences ~f:print_atomic_sequence;
   F.pp_print_string fmt "\n";
 
   F.pp_print_string
@@ -278,8 +272,8 @@ let update_astate_on_function_call_with_summary
     let mapper (astateEl : tElement) : tElement =
       let firstOccurrences : string list ref = ref astateEl.firstOccurrences in
 
-      L.iter summary.allOccurrences ~f:(fun (f : string) : unit ->
-        firstOccurrences := string_list_add_unique !firstOccurrences f);
+      L.iter summary.allOccurrences ~f:( fun (f : string) : unit ->
+        firstOccurrences := string_list_add_unique !firstOccurrences f );
 
       {astateEl with firstOccurrences= !firstOccurrences}
     in
@@ -288,28 +282,28 @@ let update_astate_on_function_call_with_summary
 let convert_astate_to_summary (astate : t) : summary =
   (* Derivates atomicity sequences and all occurrences from final calls
      of elements of the abstract state. *)
-  let atomicitySequences : (string list) list ref = ref []
+  let atomicSequences : (string list) list ref = ref []
   and allOccurrences : string list ref = ref [] in
 
   let iterator (astateEl : tElement) : unit =
-    let atomicitySequence : string list ref = ref []
-    and appendToAtomicitySequence : bool ref = ref false in
+    let atomicSequence : string list ref = ref []
+    and appendToAtomicSequence : bool ref = ref false in
 
     let iterator (sequence : string list) : unit =
       let iterator (f : string) : unit =
-        if strings_equal f "(" then appendToAtomicitySequence := true
+        if strings_equal f "(" then appendToAtomicSequence := true
         else if strings_equal f ")" then
         (
-          atomicitySequences :=
-            string_list_list_add_unique !atomicitySequences !atomicitySequence;
-          atomicitySequence := [];
-          appendToAtomicitySequence := false
+          atomicSequences :=
+            string_list_list_add_unique !atomicSequences !atomicSequence;
+          atomicSequence := [];
+          appendToAtomicSequence := false
         )
         else
         (
           allOccurrences := string_list_add_unique !allOccurrences f;
-          if !appendToAtomicitySequence then
-            atomicitySequence := !atomicitySequence @ [f]
+          if !appendToAtomicSequence then
+            atomicSequence := !atomicSequence @ [f]
         )
       in
       L.iter sequence ~f:iterator
@@ -318,19 +312,18 @@ let convert_astate_to_summary (astate : t) : summary =
   in
   TSet.iter astate ~f:iterator;
 
-  {atomicitySequences= !atomicitySequences; allOccurrences= !allOccurrences}
+  {atomicSequences= !atomicSequences; allOccurrences= !allOccurrences}
 
-(* ****************************** Reporting ********************************* *)
-
-let report (oc : OC.t) (f : string) (summary : summary) : unit =
+let print_atomic_sequences
+  (oc : OC.t) (f : string) (summary : summary) : unit =
   OC.output_string oc (f ^ ": ");
-  let atomicitySequencesLength : int = L.length summary.atomicitySequences in
+  let atomicSequencesLength : int = L.length summary.atomicSequences in
   let print_atomicity_sequence (i : int) (sequence : string list) : unit =
     OC.output_string oc ("(" ^ (S.concat sequence ~sep:" ") ^ ")");
-    if not (phys_equal i (atomicitySequencesLength - 1)) then
+    if not (phys_equal i (atomicSequencesLength - 1)) then
       OC.output_string oc " "
   in
-  L.iteri summary.atomicitySequences ~f:print_atomicity_sequence;
+  L.iteri summary.atomicSequences ~f:print_atomicity_sequence;
   OC.newline oc
 
 (* ****************************** Operators ********************************* *)
@@ -359,13 +352,8 @@ let join (astate1 : t) (astate2 : t) : t =
 
   (* result *)
 
-let widen ~prev:(p : t) ~next:(n : t) ~num_iters:(i : int) : t =
+let widen ~prev:(p : t) ~next:(n : t) ~num_iters:(_ : int) : t =
   (* Join previous and next abstract states. *)
-  (* let isInLock : bool ref = ref false in
-  let iterator (astateEl : tElement) : unit =
-    if astateEl.isInLock then isInLock := true
-  in
-  TSet.iter n ~f:iterator; *)
 
-  (* if !isInLock || P.( <= ) i 2 then join p n else p *)
-  if P.( <= ) i 2 then join p n else p
+  (* if P.( <= ) i 2 then join p n else p *)
+  join p n

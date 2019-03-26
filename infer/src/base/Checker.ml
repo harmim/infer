@@ -33,7 +33,8 @@ type t =
   | SelfInBlock
   | Starvation
   | Uninit
-  | Atomicity
+  | AtomicSequences
+  | AtomicityViolations
 [@@deriving equal, enumerate]
 
 type support = NoSupport | Support | ExperimentalSupport | ToySupport
@@ -250,10 +251,19 @@ let config checker =
       ; cli_flag= "uninit"
       ; enabled_by_default= true
       ; cli_deprecated_flags= [] }
-  | Atomicity ->
-      { support= supports_clang_and_java
-      ; short_documentation= "atomicity violations analysis"
+  | AtomicSequences ->
+      { support= supports_clang
+      ; short_documentation=
+        "atomicity violations analysis - detection of atomic sequences"
       ; show_in_help= true
-      ; cli_flag= "atomicity"
+      ; cli_flag= "atomic-sequences"
+      ; enabled_by_default= false
+      ; cli_deprecated_flags= [] }
+  | AtomicityViolations ->
+      { support= supports_clang
+      ; short_documentation=
+        "atomicity violations analysis - detection of atomicity violations"
+      ; show_in_help= true
+      ; cli_flag= "atomicity-violations"
       ; enabled_by_default= false
       ; cli_deprecated_flags= [] }

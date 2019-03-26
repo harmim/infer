@@ -29,7 +29,8 @@ include sig
     ; starvation: StarvationDomain.summary option
     ; nullsafe: NullsafeSummary.t option
     ; uninit: UninitDomain.Summary.t option
-    ; atomicityDetection: AtomicityDetectionDomain.summary option }
+    ; atomic_sequences: AtomicSequencesDomain.summary option
+    ; atomicity_violations: AtomicityViolationsDomain.summary option }
   [@@deriving fields]
 end
 

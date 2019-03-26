@@ -25,7 +25,8 @@ type t =
   ; starvation: StarvationDomain.summary option
   ; nullsafe: NullsafeSummary.t option
   ; uninit: UninitDomain.Summary.t option
-  ; atomicityDetection: AtomicityDetectionDomain.summary option }
+  ; atomic_sequences: AtomicSequencesDomain.summary option
+  ; atomicity_violations: AtomicityViolationsDomain.summary option }
 [@@deriving fields]
 
 type 'a pp = Pp.env -> F.formatter -> 'a -> unit
@@ -52,7 +53,8 @@ let fields =
     ~starvation:(fun f -> mk f "Starvation" StarvationDomain.pp_summary)
     ~nullsafe:(fun f -> mk f "Nullsafe" NullsafeSummary.pp)
     ~uninit:(fun f -> mk f "Uninitialised" UninitDomain.Summary.pp)
-    ~atomicityDetection:(fun f -> mk f "AtomicityDetection" AtomicityDetectionDomain.pp_summary)
+    ~atomic_sequences:(fun f -> mk f "AtomicSequences" AtomicSequencesDomain.pp_summary)
+    ~atomicity_violations:(fun f -> mk f "AtomicityViolations" AtomicityViolationsDomain.pp_summary)
 
 
 let pp pe f payloads =
@@ -78,4 +80,5 @@ let empty =
   ; starvation= None
   ; nullsafe= None
   ; uninit= None
-  ; atomicityDetection= None }
+  ; atomic_sequences= None
+  ; atomicity_violations= None }
