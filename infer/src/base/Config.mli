@@ -695,7 +695,9 @@ val xcode_developer_dir : string option
 
 val xcpretty : bool
 
-val atomicity : bool
+val atomic_sequences : bool
+
+val atomicity_violations : bool
 
 (** {2 Global variables with initial values specified by command-line options} *)
 

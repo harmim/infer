@@ -25,13 +25,21 @@ OPTIONS
            Activates: Enable --annotation-reachability and disable all other
            checkers (Conversely: --no-annotation-reachability-only)
 
-       --atomicity
-           Activates: atomicity violations analysis (Conversely:
-           --no-atomicity)
+       --atomic-sequences
+           Activates: atomicity violations analysis - detection of atomic
+           sequences (Conversely: --no-atomic-sequences)
 
-       --atomicity-only
-           Activates: Enable --atomicity and disable all other checkers
-           (Conversely: --no-atomicity-only)
+       --atomic-sequences-only
+           Activates: Enable --atomic-sequences and disable all other
+           checkers (Conversely: --no-atomic-sequences-only)
+
+       --atomicity-violations
+           Activates: atomicity violations analysis - detection of atomicity
+           violations (Conversely: --no-atomicity-violations)
+
+       --atomicity-violations-only
+           Activates: Enable --atomicity-violations and disable all other
+           checkers (Conversely: --no-atomicity-violations-only)
 
        --no-biabduction
            Deactivates: the separation logic based bi-abduction analysis

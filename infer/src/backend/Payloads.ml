@@ -24,7 +24,8 @@ type t =
   ; starvation: StarvationDomain.summary option
   ; typestate: TypeState.t option
   ; uninit: UninitDomain.Summary.t option
-  ; atomicityDetection: AtomicityDetectionDomain.summary option }
+  ; atomic_sequences: AtomicSequencesDomain.summary option
+  ; atomicity_violations: AtomicityViolationsDomain.summary option }
 
 let pp pe fmt
     { annot_map
@@ -42,14 +43,15 @@ let pp pe fmt
     ; starvation
     ; typestate
     ; uninit
-    ; atomicityDetection } =
+    ; atomic_sequences
+    ; atomicity_violations } =
   let pp_opt prefix pp fmt = function
     | Some x ->
         F.fprintf fmt "%s: %a@\n" prefix pp x
     | None ->
         ()
   in
-  F.fprintf fmt "%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a@\n"
+  F.fprintf fmt "%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a%a@\n"
     (pp_opt "Biabduction" (BiabductionSummary.pp pe))
     biabduction (pp_opt "TypeState" TypeState.pp) typestate
     (pp_opt "ClassLoads" ClassLoadsDomain.pp_summary)
@@ -76,8 +78,10 @@ let pp pe fmt
     purity
     (pp_opt "Resource Leaks Lab" ResourceLeakDomain.pp)
     lab_resource_leaks
-    (pp_opt "AtomicityDetection" AtomicityDetectionDomain.pp_summary)
-    atomicityDetection
+    (pp_opt "AtomicSequences" AtomicSequencesDomain.pp_summary)
+    atomic_sequences
+    (pp_opt "AtomicityViolations" AtomicityViolationsDomain.pp_summary)
+    atomicity_violations
 
 
 let empty =
@@ -96,4 +100,5 @@ let empty =
   ; starvation= None
   ; typestate= None
   ; uninit= None
-  ; atomicityDetection= None }
+  ; atomic_sequences= None
+  ; atomicity_violations= None }

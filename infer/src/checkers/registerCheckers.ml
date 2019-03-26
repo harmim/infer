@@ -128,11 +128,15 @@ let all_checkers =
   ; { name= "Class loading analysis"
     ; active= Config.class_loads
     ; callbacks= [(Procedure ClassLoads.analyze_procedure, Language.Java)] }
-  ; { name= "Atomicity violations analysis"
-    ; active= Config.atomicity
+  ; { name= "Atomicity violations analysis - detection of atomic sequences"
+    ; active= Config.atomic_sequences
     ; callbacks=
-        [ (Procedure AtomicityDetection.checker, Language.Clang)
-        ; (Cluster AtomicityDetection.reporting, Language.Clang) ] } ]
+        [ (Procedure AtomicSequences.analyze_procedure, Language.Clang)
+        ; (Cluster AtomicSequences.print_atomic_sequences, Language.Clang) ] }
+  ; { name= "Atomicity violations analysis - detection of atomicity violations"
+    ; active= Config.atomicity_violations
+    ; callbacks=
+        [(Procedure AtomicityViolations.analyze_procedure, Language.Clang)] } ]
 
 
 let get_active_checkers () =

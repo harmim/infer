@@ -1,16 +1,9 @@
-(** Atomicity detection domain interface. *)
+(** Detection of atomic sequences domain interface. *)
 
 open! IStd
+
 module F = Format
 module OC = Out_channel
-
-(* ****************************** Functions ********************************* *)
-
-val is_lock : string -> bool
-(** Checks whether the given function is a lock. *)
-
-val is_unlock : string -> bool
-(** Checks whether the given function is an unlock. *)
 
 (* ****************************** Astate ************************************ *)
 
@@ -49,9 +42,7 @@ val update_astate_on_function_call_with_summary : t -> summary -> t
 val convert_astate_to_summary : t -> summary
 (** Converts the abstract state to a summary. *)
 
-(* ****************************** Reporting ********************************* *)
-
-val report : OC.t -> string -> summary -> unit
+val print_atomic_sequences : OC.t -> string -> summary -> unit
 (** Prints atomicity sequences from the given summary and the function name
     to the given output channel. *)
 

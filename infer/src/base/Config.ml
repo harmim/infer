@@ -610,7 +610,8 @@ and ( annotation_reachability
     , siof
     , starvation
     , uninit
-    , atomicity ) =
+    , (atomic_sequences : bool ref)
+    , (atomicity_violations : bool ref) ) =
   let mk_checker ?(default = false) ?(deprecated = []) ~long doc =
     let var =
       CLOpt.mk_bool ~long
@@ -674,8 +675,16 @@ and ( annotation_reachability
       "the Static Initialization Order Fiasco analysis (C++ only)"
   and starvation = mk_checker ~long:"starvation" ~default:false "starvation analysis"
   and uninit = mk_checker ~long:"uninit" "checker for use of uninitialized values" ~default:true
-  and atomicity =
-    mk_checker ~long:"atomicity" ~default:false "atomicity violations analysis"
+  and (atomic_sequences : bool ref) =
+    mk_checker
+      ~long:"atomic-sequences"
+      ~default:false
+      "atomicity violations analysis - detection of atomic sequences"
+  and (atomicity_violations : bool ref) =
+    mk_checker
+      ~long:"atomicity-violations"
+      ~default:false
+      "atomicity violations analysis - detection of atomicity violations"
   in
   let mk_only (var, long, doc, _) =
     let _ : bool ref =
@@ -739,7 +748,8 @@ and ( annotation_reachability
   , siof
   , starvation
   , uninit
-  , atomicity )
+  , atomic_sequences
+  , atomicity_violations )
 
 
 and annotation_reachability_custom_pairs =
@@ -3013,7 +3023,9 @@ and xcode_developer_dir = !xcode_developer_dir
 
 and xcpretty = !xcpretty
 
-and atomicity = !atomicity
+and atomic_sequences : bool = !atomic_sequences
+
+and atomicity_violations : bool = !atomicity_violations
 
 (** Configuration values derived from command-line options *)
 

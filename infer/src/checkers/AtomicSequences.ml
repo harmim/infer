@@ -1,20 +1,23 @@
-(** Atomicity detection implementation. *)
+(** Detection of atomic sequences implementation. *)
 
 open! IStd
+open AtomicityUtils
+
 module F = Format
-module D = AtomicityDetectionDomain (* The abstract domain definition. *)
+module D = AtomicSequencesDomain (* The abstract domain definition. *)
 module Procname = Typ.Procname
 module OC = Out_channel
+module L = List
 
 (** The summary payload for analyzed functions. *)
 module Payload = SummaryPayload.Make (struct
   type t = D.summary (* A type of the payload is the domain summary. *)
 
   let update_payloads (payload : t) (payloads : Payloads.t) : Payloads.t =
-    {payloads with atomicityDetection= Some payload}
+    {payloads with atomic_sequences= Some payload}
 
   let of_payloads (payloads : Payloads.t) : t option =
-    payloads.atomicityDetection
+    payloads.atomic_sequences
 end)
 
 (** The transfer function for abstract states of the analyzed function. *)
@@ -42,9 +45,8 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
       let calleePnameString : string = Procname.to_string calleePname in
 
       (* let astate : D.t = *)
-      if D.is_lock calleePnameString then D.update_astate_on_lock astate
-      else if D.is_unlock calleePnameString then
-        D.update_astate_on_unlock astate
+      if is_lock calleePnameString then D.update_astate_on_lock astate
+      else if is_unlock calleePnameString then D.update_astate_on_unlock astate
       else
       (
         let astate : D.t =
@@ -68,14 +70,16 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     | _ -> astate
 
   let pp_session_name (_ : CFG.Node.t) (fmt : F.formatter) : unit =
-    F.pp_print_string fmt "Atomicity detection"
+    F.pp_print_string fmt "AtomicSequences"
 end
 
 (** The analyzer definition. *)
 module Analyzer =
   LowerHil.MakeAbstractInterpreter (TransferFunctions (ProcCfg.Normal))
 
-let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
+let atomicSequencesFile : string = "atomic-sequences"
+
+let analyze_procedure (procArgs : Callbacks.proc_callback_args) : Summary.t =
   let procNameString : string =
     Procname.to_string (Procdesc.get_proc_name procArgs.proc_desc)
   in
@@ -104,28 +108,28 @@ let checker (procArgs : Callbacks.proc_callback_args) : Summary.t =
     Payload.update_summary convertedSummary procArgs.summary
   | None ->
     Logging.(die InternalError)
-      "The atomicity detection failed to compute a post for the %s."
+      "The detection of atomic sequences failed to compute a post for the '%s'."
       procNameString
 
-let reporting (clusterArgs : Callbacks.cluster_callback_args) : unit =
-  (* Create a directory for the reporting. *)
-  let dir : string =
-    Escape.escape_filename (CommandLineOption.init_work_dir ^ "/infer-out")
-  in
-  Utils.create_dir dir;
+let print_atomic_sequences
+  (clusterArgs : Callbacks.cluster_callback_args) : unit =
+  (* Create a directory for the printing. *)
+  Utils.create_dir inferDir;
 
-  (* Report to the file. *)
-  let oc : OC.t = OC.create ~binary:false (dir ^ "/atomicity-detection") in
-  let report ((_ : Tenv.t), (procDesc : Procdesc.t)) : unit =
+  (* Print to the file. *)
+  let file : string = inferDir ^ "/" ^ atomicSequencesFile in
+  let oc : OC.t = OC.create ~binary:false file in
+  let print_atomic_sequences ((_ : Tenv.t), (procDesc : Procdesc.t)) : unit =
     let procName : Procname.t = Procdesc.get_proc_name procDesc in
+
     Option.iter
-      (Payload.read procDesc procName) ~f:(fun (summary : D.summary) : unit ->
-        D.report oc (Procname.to_string procName) summary)
+      (Payload.read procDesc procName) ~f:( fun (summary : D.summary) : unit ->
+        D.print_atomic_sequences oc (Procname.to_string procName) summary )
   in
-  List.iter clusterArgs.procedures ~f:report;
+  L.iter clusterArgs.procedures ~f:print_atomic_sequences;
   OC.close oc;
 
   F.pp_print_string
     F.std_formatter
-    ("The atomicity detection produced an output (atomicity sequences) into " ^
-     "the './infer-out/atomicity-detection' file.\n")
+    ( "The detection of atomic sequences produced an output (atomic " ^
+      "sequences) into the file '" ^ file ^ "'.\n" )
