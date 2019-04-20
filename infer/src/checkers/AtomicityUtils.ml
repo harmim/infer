@@ -13,14 +13,14 @@ let atomicSequencesFile : string =  inferDir ^ "/atomic-sequences"
 
 let s_eq (s1 : string) (s2 : string) : bool = phys_equal (S.compare s1 s2) 0
 
-let s_empty (s : string) = s_eq s ""
+let s_empty (s : string) : bool = s_eq s ""
 
 let is_lock (f : string) : bool = s_eq f "pthread_mutex_lock"
 
 let is_unlock (f : string) : bool = s_eq f "pthread_mutex_unlock"
 
 let lists_eq (l1 : 'a list) (l2 : 'a list) (cmp : ('a -> 'a -> bool)) : bool =
-  (* A length of lists and theirs elements must be equal. *)
+  (* The length of lists and theirs elements must be equal. *)
   if not (phys_equal (L.length l1) (L.length l2)) then false
   else
   (
@@ -47,7 +47,6 @@ let string_list_list_add_unique
   list_add_unique ll l string_lists_eq
 
 let list_remove_last (l : 'a list) : 'a list =
-  let lLength : int = L.length l in
+  let len : int = L.length l in
 
-  L.filteri
-    l ~f:(fun (i : int) (_ : 'a) : bool -> not (phys_equal i (lLength - 1)))
+  L.filteri l ~f:(fun (i : int) (_ : 'a) : bool -> not (phys_equal i (len - 1)))
