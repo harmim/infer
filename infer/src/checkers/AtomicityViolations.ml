@@ -7,9 +7,10 @@ module D = AtomicityViolationsDomain (* Abstract domain definition. *)
 module F = Format
 module Loc = Location
 module Pdata = ProcData
+module Pdesc = Procdesc
 module Pname = Typ.Procname
 
-(** Summary payload for analyzed functions. *)
+(** Summary payload for analysed functions. *)
 module Payload = SummaryPayload.Make (struct
   type t = D.summary (* Type of the payload is a domain summary. *)
 
@@ -20,7 +21,7 @@ module Payload = SummaryPayload.Make (struct
     payloads.atomicity_violations
 end)
 
-(** Transfer function for abstract states of an analyzed function. *)
+(** Transfer function for abstract states of an analysed function. *)
 module TransferFunctions (CFG : ProcCfg.S) = struct
   module CFG = CFG
   module Domain = D
@@ -75,20 +76,18 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     F.pp_print_string fmt "AtomicityViolations"
 end
 
-(** Analyzer definition. *)
-module Analyzer =
+(** Analyser definition. *)
+module Analyser =
   LowerHil.MakeAbstractInterpreter (TransferFunctions (ProcCfg.Normal))
 
-let analyze_procedure (pArgs : Callbacks.proc_callback_args) : Summary.t =
+let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
   D.initialise true; (* Domain initialisation. *)
 
-  let pNameS : string =
-    Pname.to_string (Procdesc.get_proc_name pArgs.proc_desc)
-  in
+  let pNameS : string = Pname.to_string (Pdesc.get_proc_name args.proc_desc) in
 
   (* Compute the abstract state for the a given function. *)
-  match Analyzer.compute_post
-    (Pdata.make_default pArgs.proc_desc pArgs.tenv) ~initial:D.initial
+  match Analyser.compute_post
+    (Pdata.make_default args.proc_desc args.tenv) ~initial:D.initial
   with
   | Some (post : D.t) ->
     (* Convert the abstract state to the function summary. *)
@@ -107,11 +106,11 @@ let analyze_procedure (pArgs : Callbacks.proc_callback_args) : Summary.t =
     D.report_atomicity_violations
       post ( fun (loc : Loc.t) (msg : string) : unit ->
         Reporting.log_error
-          pArgs.summary ~loc:loc IssueType.atomicity_violation msg );
+          args.summary ~loc:loc IssueType.atomicity_violation msg );
 
-    Payload.update_summary convertedSummary pArgs.summary
+    Payload.update_summary convertedSummary args.summary
 
   | None ->
     Logging.(die InternalError)
-      "The detection of atomicity violations failed to compute a post for '%s'."
+      "Detection of atomicity violations failed to compute a post for '%s'."
       pNameS

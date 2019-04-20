@@ -131,12 +131,12 @@ let all_checkers =
   ; { name= "Atomicity violations analysis - detection of atomic sequences"
     ; active= Config.atomic_sequences
     ; callbacks=
-        [ (Procedure AtomicSequences.analyze_procedure, Language.Clang)
+        [ (Procedure AtomicSequences.analyse_procedure, Language.Clang)
         ; (Cluster AtomicSequences.print_atomic_sequences, Language.Clang) ] }
   ; { name= "Atomicity violations analysis - detection of atomicity violations"
     ; active= Config.atomicity_violations
     ; callbacks=
-        [(Procedure AtomicityViolations.analyze_procedure, Language.Clang)] } ]
+        [(Procedure AtomicityViolations.analyse_procedure, Language.Clang)] } ]
 
 
 let get_active_checkers () =
