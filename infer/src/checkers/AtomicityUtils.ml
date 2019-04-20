@@ -5,11 +5,15 @@ open! IStd
 module L = List
 module S = String
 
+(* ****************************** Constants ********************************* *)
+
 let inferDir : string =
   Escape.escape_filename
     (CommandLineOption.init_work_dir ^ "/infer-atomicity-out")
 
 let atomicSequencesFile : string =  inferDir ^ "/atomic-sequences"
+
+(* ****************************** Strings *********************************** *)
 
 let s_eq (s1 : string) (s2 : string) : bool = phys_equal (S.compare s1 s2) 0
 
@@ -18,6 +22,8 @@ let s_empty (s : string) : bool = s_eq s ""
 let is_lock (f : string) : bool = s_eq f "pthread_mutex_lock"
 
 let is_unlock (f : string) : bool = s_eq f "pthread_mutex_unlock"
+
+(* ****************************** Lists ************************************* *)
 
 let lists_eq (l1 : 'a list) (l2 : 'a list) (cmp : ('a -> 'a -> bool)) : bool =
   (* The length of lists and theirs elements must be equal. *)
