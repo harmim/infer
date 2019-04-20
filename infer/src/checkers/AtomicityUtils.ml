@@ -2,8 +2,8 @@
 
 open! IStd
 
-module S = String
 module L = List
+module S = String
 
 let inferDir : string =
   Escape.escape_filename
