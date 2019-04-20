@@ -2,11 +2,15 @@
 
 open! IStd
 
+(* ****************************** Constants ********************************* *)
+
 val inferDir : string
 (** Infer work directory. *)
 
 val atomicSequencesFile : string
 (** File for storing atomic sequences. *)
+
+(* ****************************** Strings *********************************** *)
 
 val s_eq : string -> string -> bool
 (** Checks whether strings are equal. *)
@@ -19,6 +23,8 @@ val is_lock : string -> bool
 
 val is_unlock : string -> bool
 (** Checks whether a given function is an unlock. *)
+
+(* ****************************** Lists ************************************* *)
 
 val lists_eq : 'a list -> 'a list -> ('a -> 'a -> bool) -> bool
 (** Checks whether lists are equal. *)

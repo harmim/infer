@@ -15,7 +15,7 @@ type t
 (** The abstract state of a function. *)
 
 val initial : t
-(** The initial abstract state of each analyzed function. *)
+(** The initial abstract state of each analysed function. *)
 
 val pp : F.formatter -> t -> unit
 (** Pretty printer of the abstract state. *)
