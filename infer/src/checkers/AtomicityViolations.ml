@@ -3,14 +3,15 @@
 open! IStd
 open! AtomicityUtils
 
+module D = AtomicityViolationsDomain (* Abstract domain definition. *)
 module F = Format
-module D = AtomicityViolationsDomain (* The abstract domain definition. *)
-module Procname = Typ.Procname
 module Loc = Location
+module Pdata = ProcData
+module Pname = Typ.Procname
 
-(** The summary payload for analyzed functions. *)
+(** Summary payload for analyzed functions. *)
 module Payload = SummaryPayload.Make (struct
-  type t = D.summary (* A type of the payload is the domain summary. *)
+  type t = D.summary (* Type of the payload is a domain summary. *)
 
   let update_payloads (payload : t) (payloads : Payloads.t) : Payloads.t =
     {payloads with atomicity_violations= Some payload}
@@ -19,39 +20,41 @@ module Payload = SummaryPayload.Make (struct
     payloads.atomicity_violations
 end)
 
-(** The transfer function for abstract states of the analyzed function. *)
+(** Transfer function for abstract states of an analyzed function. *)
 module TransferFunctions (CFG : ProcCfg.S) = struct
   module CFG = CFG
   module Domain = D
 
-  type extras = ProcData.no_extras (* No extras needed. *)
+  type extras = Pdata.no_extras (* No extras needed. *)
 
   let exec_instr
     (astate : D.t)
-    (procData : extras ProcData.t)
+    (pData : extras Pdata.t)
     (_ : CFG.Node.t)
     (instr : HilInstr.t)
     : D.t =
     match instr with
-    (* Update the abstract state on functions calls. *)
+    (* Update the abstract state on function calls. *)
     | Call (
-      (_ : AccessPath.base),
-      (Direct (calleePname : Procname.t) : HilInstr.call),
-      (_ : HilExp.t list),
-      (_ : CallFlags.t),
-      (loc : Loc.t)
-    ) ->
-      let calleePnameString : string = Procname.to_string calleePname in
+        (_ : AccessPath.base),
+        (Direct (calleePname : Pname.t) : HilInstr.call),
+        (_ : HilExp.t list),
+        (_ : CallFlags.t),
+        (loc : Loc.t)
+      ) ->
+      let calleePnameS : string = Pname.to_string calleePname in
 
       (* let astate : D.t = *)
-      if is_lock calleePnameString then D.update_astate_on_lock astate
-      else if is_unlock calleePnameString then D.update_astate_on_unlock astate
+      if is_lock calleePnameS then D.update_astate_on_lock astate
+      else if is_unlock calleePnameS then D.update_astate_on_unlock astate
       else
         let astate : D.t =
-          D.update_astate_on_function_call astate calleePnameString loc
+          D.update_astate_on_function_call astate calleePnameS loc
         in
 
-        ( match Payload.read procData.pdesc calleePname with
+        (* Update the abstract state with the function summary as well if it is
+           possible. *)
+        ( match Payload.read pData.pdesc calleePname with
           | Some (summary : D.summary) ->
             D.update_astate_on_function_call_with_summary astate summary loc
 
@@ -62,7 +65,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
       (* F.fprintf
         F.std_formatter
         "\n\nFunction: %s\n%a\n\n"
-        calleePnameString D.pp astate; *)
+        calleePnameS D.pp astate; *)
 
       (* astate *)
 
@@ -72,43 +75,43 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     F.pp_print_string fmt "AtomicityViolations"
 end
 
-(** The analyzer definition. *)
+(** Analyzer definition. *)
 module Analyzer =
   LowerHil.MakeAbstractInterpreter (TransferFunctions (ProcCfg.Normal))
 
-let analyze_procedure (procArgs : Callbacks.proc_callback_args) : Summary.t =
-  D.initialise true;
+let analyze_procedure (pArgs : Callbacks.proc_callback_args) : Summary.t =
+  D.initialise true; (* Domain initialisation. *)
 
-  let procNameString : string =
-    Procname.to_string (Procdesc.get_proc_name procArgs.proc_desc)
-  and procData : ProcData.no_extras ProcData.t =
-    ProcData.make_default procArgs.proc_desc procArgs.tenv
+  let pNameS : string =
+    Pname.to_string (Procdesc.get_proc_name pArgs.proc_desc)
   in
 
-  (* Compute the abstract state for the given function. *)
-  match Analyzer.compute_post procData ~initial:D.initial
+  (* Compute the abstract state for the a given function. *)
+  match Analyzer.compute_post
+    (Pdata.make_default pArgs.proc_desc pArgs.tenv) ~initial:D.initial
   with
   | Some (post : D.t) ->
+    (* Convert the abstract state to the function summary. *)
     let convertedSummary : D.summary = D.convert_astate_to_summary post in
 
-    (* A debug log. *)
+    (* Debug log. *)
     let fmt : F.formatter = F.str_formatter
     and _ : string = F.flush_str_formatter () in
-
     F.fprintf
       fmt
       "\n\nFunction: %s\n%a%a\n\n"
-      procNameString D.pp post D.pp_summary convertedSummary;
+      pNameS D.pp post D.pp_summary convertedSummary;
     Logging.(debug Capture Verbose) "%s" (F.flush_str_formatter ());
 
+    (* Report atomicity violations. *)
     D.report_atomicity_violations
       post ( fun (loc : Loc.t) (msg : string) : unit ->
         Reporting.log_error
-          procArgs.summary ~loc:loc IssueType.atomicity_violation msg );
+          pArgs.summary ~loc:loc IssueType.atomicity_violation msg );
 
-    Payload.update_summary convertedSummary procArgs.summary
+    Payload.update_summary convertedSummary pArgs.summary
 
   | None ->
     Logging.(die InternalError)
       "The detection of atomicity violations failed to compute a post for '%s'."
-      procNameString
+      pNameS
