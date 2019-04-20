@@ -336,3 +336,5 @@ val vector_invalidation : t
 val wrong_argument_number : t
 
 val zero_execution_time_call : t
+
+val atomicity_violation : t

@@ -436,3 +436,6 @@ let vector_invalidation = from_string "VECTOR_INVALIDATION"
 let wrong_argument_number = from_string "Wrong_argument_number" ~hum:"Wrong Argument Number"
 
 let zero_execution_time_call = from_string ~enabled:false "ZERO_EXECUTION_TIME_CALL"
+
+let atomicity_violation =
+  from_string ~enabled:true ~hum:"Atomicity Violation" "ATOMICITY_VIOLATION"

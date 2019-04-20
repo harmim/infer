@@ -1,55 +1,13 @@
 (** Detection of atomic sequences domain implementation. *)
 
 open! IStd
-open AtomicityUtils
+open! AtomicityUtils
 
 module F = Format
 module L = List
 module S = String
 module OC = Out_channel
 module P = Pervasives
-
-(* ****************************** Functions ********************************* *)
-
-(** Checks whether lists are equal. *)
-let lists_equal
-  (l1 : 'a list) (l2 : 'a list) (cmp : ('a -> 'a -> bool)) : bool =
-  (* A length of lists and theirs elements must be equal. *)
-  if not (phys_equal (L.length l1) (L.length l2)) then false
-  else
-  (
-    let eq : bool ref = ref true in
-
-    L.iter2_exn
-      l1 l2 ~f:( fun (e1 : 'a) (e2 : 'a) : unit ->
-        if not (cmp e1 e2) then eq := false );
-
-    !eq
-  )
-
-(** Checks whether string lists are equal. *)
-let string_lists_equal (l1 : string list) (l2 : string list) : bool =
-  lists_equal l1 l2 strings_equal
-
-(** Removes a last element from the list. *)
-let list_remove_last (l : 'a list) : 'a list =
-  let lLength : int = L.length l in
-
-  L.filteri
-    l ~f:(fun (i : int) (_ : 'a) : bool -> not (phys_equal i (lLength - 1)))
-
-(** Adds the element to the list without duplicities. *)
-let list_add_unique (l : 'a list) (e : 'a) (eq : ('a -> 'a -> bool)) : 'a list =
-  if L.mem l e ~equal:eq then l else l @ [e]
-
-(** Adds the string element to the list without duplicities. *)
-let string_list_add_unique (l : string list) (s : string) : string list =
-  list_add_unique l s strings_equal
-
-(** Adds the string list element to the list without duplicities. *)
-let string_list_list_add_unique
-  (ll : (string list) list) (l : string list) : (string list) list =
-  list_add_unique ll l string_lists_equal
 
 (* ****************************** Astate ************************************ *)
 
@@ -58,8 +16,9 @@ module StringListSet = Set.Make (struct
   type t = string list [@@ deriving sexp]
 
   let compare (e1 : t) (e2 : t) : int =
-    if string_lists_equal e1 e2 then 0
-    else if P.compare e1 e2 > 0 then 1 else -1
+    if string_lists_eq e1 e2 then 0
+    else if P.compare e1 e2 > 0 then 1
+    else -1
 end)
 
 (** The element of an abstract state. *)
@@ -75,11 +34,13 @@ module TSet = Set.Make (struct
 
   let compare (e1 : t) (e2 : t) : int =
     if
-      string_lists_equal e1.firstOccurrences e2.firstOccurrences
-      && string_lists_equal e1.callSequence e2.callSequence
+      string_lists_eq e1.firstOccurrences e2.firstOccurrences
+      && string_lists_eq e1.callSequence e2.callSequence
       && StringListSet.equal e1.finalCalls e2.finalCalls
+      && phys_equal e1.isInLock e2.isInLock
     then 0
-    else if P.compare e1 e2 > 0 then 1 else -1
+    else if P.compare e1 e2 > 0 then 1
+    else -1
 end)
 
 type t = TSet.t
@@ -94,56 +55,55 @@ let initial : t =
 
 let pp (fmt : F.formatter) (astate : t) : unit =
   let lastAstateEl : tElement = TSet.max_elt_exn astate in
-  let print_final_calls (astateEl : tElement) : unit =
-    if not (StringListSet.is_empty astateEl.finalCalls) then
-    (
-      F.pp_print_string fmt "{";
 
-      let lastFinalCallsSequenceOption : (string list) option =
-        StringListSet.max_elt astateEl.finalCalls
-      in
-      let print_final_calls_sequence (sequence : string list) : unit =
-        F.pp_print_string fmt (S.concat sequence ~sep:" ");
-
-        match lastFinalCallsSequenceOption with
-        | Some (lastFinalCallsSequence : string list) ->
-          if not (phys_equal sequence lastFinalCallsSequence) then
-            F.pp_print_string fmt " | "
-        | None -> ()
-      in
-      StringListSet.iter astateEl.finalCalls ~f:print_final_calls_sequence;
-
-      F.pp_print_string fmt "}";
-      if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
-    )
-  in
-  F.pp_print_string fmt "finalCalls: ";
-  TSet.iter astate ~f:print_final_calls;
-  F.pp_print_string fmt "\n"
-
-  (* ; let print_first_occurrences (astateEl : tElement) : unit =
-    (* if not (L.is_empty astateEl.firstOccurrences) then *)
-    (
-      F.pp_print_string
-        fmt ("{" ^ (S.concat astateEl.firstOccurrences ~sep:" ") ^ "}");
-      if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
-    )
+  let print_first_occurrences (astateEl : tElement) : unit =
+    F.fprintf fmt "{%s}" (S.concat astateEl.firstOccurrences ~sep:" ");
+    if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
   in
   F.pp_print_string fmt "firstOccurrences: ";
   TSet.iter astate ~f:print_first_occurrences;
-  F.pp_print_string fmt "\n" *)
+  F.pp_print_string fmt "\n";
 
-  (* ; let print_call_sequence (astateEl : tElement) : unit =
-    (* if not (L.is_empty astateEl.callSequence) then *)
-    (
-      F.pp_print_string
-        fmt ("{" ^ (S.concat astateEl.callSequence ~sep:" ") ^ "}");
-      if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
-    )
+  let print_call_sequence (astateEl : tElement) : unit =
+    F.fprintf fmt "{%s}" (S.concat astateEl.callSequence ~sep:" ");
+    if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
   in
   F.pp_print_string fmt "callSequence: ";
   TSet.iter astate ~f:print_call_sequence;
-  F.pp_print_string fmt "\n\n" *)
+  F.pp_print_string fmt "\n";
+
+  let print_final_calls (astateEl : tElement) : unit =
+    F.pp_print_string fmt "{";
+
+    let lastFinalCallsSequenceOption : (string list) option =
+      StringListSet.max_elt astateEl.finalCalls
+    in
+    let print_final_calls_sequence (sequence : string list) : unit =
+      F.pp_print_string fmt (S.concat sequence ~sep:" ");
+
+      match lastFinalCallsSequenceOption with
+      | Some (lastFinalCallsSequence : string list) ->
+        if not (phys_equal sequence lastFinalCallsSequence) then
+          F.pp_print_string fmt " | "
+
+      | None -> ()
+    in
+    StringListSet.iter astateEl.finalCalls ~f:print_final_calls_sequence;
+
+    F.pp_print_string fmt "}";
+    if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
+  in
+  F.pp_print_string fmt "finalCalls: ";
+  TSet.iter astate ~f:print_final_calls;
+  F.pp_print_string fmt "\n";
+
+  let print_is_in_lock (astateEl : tElement) : unit =
+    F.fprintf fmt "%B" astateEl.isInLock;
+    if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
+  in
+  F.pp_print_string fmt "isInLock: ";
+  TSet.iter astate ~f:print_is_in_lock;
+  F.pp_print_string fmt "\n\n"
 
 (** Adss first occurrences to the call sequence. *)
 let call_sequence_add_first_occurrences
@@ -153,8 +113,7 @@ let call_sequence_add_first_occurrences
   (* If an atomicity sequence in the callSequence is empty, then remove
      the character '(', otherwise close a sequence with adding
      the character ')'. *)
-  if strings_equal (L.last_exn callSequence) "(" then
-    list_remove_last callSequence
+  if s_eq (L.last_exn callSequence) "(" then list_remove_last callSequence
   else callSequence @ [")"]
 
 (** Adds the call sequence to final calls. *)
@@ -251,7 +210,7 @@ type summary =
 let pp_summary (fmt : F.formatter) (summary : summary) : unit =
   let atomicSequencesLength : int = L.length summary.atomicSequences in
   let print_atomic_sequence (i : int) (sequence : string list) : unit =
-    F.pp_print_string fmt ("(" ^ (S.concat sequence ~sep:" ") ^ ")");
+    F.fprintf fmt "(%s)" (S.concat sequence ~sep:" ");
     if not (phys_equal i (atomicSequencesLength - 1)) then
       F.pp_print_string fmt " "
   in
@@ -259,9 +218,8 @@ let pp_summary (fmt : F.formatter) (summary : summary) : unit =
   L.iteri summary.atomicSequences ~f:print_atomic_sequence;
   F.pp_print_string fmt "\n";
 
-  F.pp_print_string
-    fmt
-    ("allOccurrences: " ^ (S.concat summary.allOccurrences ~sep:" ") ^ "\n")
+  F.fprintf
+    fmt "allOccurrences: %s\n\n" (S.concat summary.allOccurrences ~sep:" ")
 
 let update_astate_on_function_call_with_summary
   (astate : t) (summary : summary) : t =
@@ -270,7 +228,9 @@ let update_astate_on_function_call_with_summary
   if L.is_empty summary.allOccurrences then astate
   else
     let mapper (astateEl : tElement) : tElement =
-      let firstOccurrences : string list ref = ref astateEl.firstOccurrences in
+      let firstOccurrences : (string list) ref =
+        ref astateEl.firstOccurrences
+      in
 
       L.iter summary.allOccurrences ~f:( fun (f : string) : unit ->
         firstOccurrences := string_list_add_unique !firstOccurrences f );
@@ -282,17 +242,17 @@ let update_astate_on_function_call_with_summary
 let convert_astate_to_summary (astate : t) : summary =
   (* Derivates atomicity sequences and all occurrences from final calls
      of elements of the abstract state. *)
-  let atomicSequences : (string list) list ref = ref []
-  and allOccurrences : string list ref = ref [] in
+  let atomicSequences : ((string list) list) ref = ref []
+  and allOccurrences : (string list) ref = ref [] in
 
   let iterator (astateEl : tElement) : unit =
-    let atomicSequence : string list ref = ref []
+    let atomicSequence : (string list) ref = ref []
     and appendToAtomicSequence : bool ref = ref false in
 
     let iterator (sequence : string list) : unit =
       let iterator (f : string) : unit =
-        if strings_equal f "(" then appendToAtomicSequence := true
-        else if strings_equal f ")" then
+        if s_eq f "(" then appendToAtomicSequence := true
+        else if s_eq f ")" then
         (
           atomicSequences :=
             string_list_list_add_unique !atomicSequences !atomicSequence;
@@ -316,10 +276,10 @@ let convert_astate_to_summary (astate : t) : summary =
 
 let print_atomic_sequences
   (oc : OC.t) (f : string) (summary : summary) : unit =
-  OC.output_string oc (f ^ ": ");
+  OC.fprintf oc "%s: " f;
   let atomicSequencesLength : int = L.length summary.atomicSequences in
   let print_atomicity_sequence (i : int) (sequence : string list) : unit =
-    OC.output_string oc ("(" ^ (S.concat sequence ~sep:" ") ^ ")");
+    OC.fprintf oc "(%s)" (S.concat sequence ~sep:" ");
     if not (phys_equal i (atomicSequencesLength - 1)) then
       OC.output_string oc " "
   in
@@ -341,14 +301,10 @@ let join (astate1 : t) (astate2 : t) : t =
   else TSet.union astate1 astate2
   (* in *)
 
-  (* F.fprintf F.std_formatter "\nJoin:\n"; *)
-  (* F.fprintf F.std_formatter "\n1:\n"; *)
-  (* pp F.std_formatter astate1; *)
-  (* F.fprintf F.std_formatter "\n2:\n"; *)
-  (* pp F.std_formatter astate2; *)
-  (* F.fprintf F.std_formatter "\nresult:\n"; *)
-  (* pp F.std_formatter result; *)
-  (* F.fprintf F.std_formatter "\n\n"; *)
+  (* F.fprintf F.std_formatter "\nJoin:\n";
+  F.fprintf F.std_formatter "\n1:\n%a" pp astate1;
+  F.fprintf F.std_formatter "\n2:\n%a" pp astate2;
+  F.fprintf F.std_formatter "\nresult:\n%a\n\n" pp result; *)
 
   (* result *)
 
