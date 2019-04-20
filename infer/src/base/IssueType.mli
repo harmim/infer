@@ -355,3 +355,5 @@ val weak_self_in_noescape_block : t
 val wrong_argument_number : t
 
 val unreachable_cost_call : kind:CostKind.t -> t
+
+val atomicity_violation : t

@@ -297,7 +297,7 @@ let eradicate_meta_class_is_nullsafe =
     ~enabled:false
 
 
-(* Class is either: 
+(* Class is either:
    - has at least one nullability issue.
    - has at least one (currently possibly hidden) issue in order to be marked as @Nullsafe.
  *)
@@ -526,6 +526,9 @@ let wrong_argument_number =
 
 let unreachable_cost_call ~kind =
   register_from_cost_string ~enabled:false ~kind "%s_UNREACHABLE_AT_EXIT"
+
+let atomicity_violation =
+  register_from_cost_string ~enabled:true ~hum:"Atomicity Violation" "ATOMICITY_VIOLATION"
 
 
 (* register enabled cost issues *)

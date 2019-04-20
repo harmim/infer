@@ -1,13 +1,14 @@
 (** Detection of atomic sequences implementation. *)
 
 open! IStd
-open AtomicityUtils
+open! AtomicityUtils
 
 module F = Format
 module D = AtomicSequencesDomain (* The abstract domain definition. *)
 module Procname = Typ.Procname
 module OC = Out_channel
 module L = List
+module Loc = Location
 
 (** The summary payload for analyzed functions. *)
 module Payload = SummaryPayload.Make (struct
@@ -16,8 +17,7 @@ module Payload = SummaryPayload.Make (struct
   let update_payloads (payload : t) (payloads : Payloads.t) : Payloads.t =
     {payloads with atomic_sequences= Some payload}
 
-  let of_payloads (payloads : Payloads.t) : t option =
-    payloads.atomic_sequences
+  let of_payloads (payloads : Payloads.t) : t option = payloads.atomic_sequences
 end)
 
 (** The transfer function for abstract states of the analyzed function. *)
@@ -40,7 +40,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
       (Direct (calleePname : Procname.t) : HilInstr.call),
       (_ : HilExp.t list),
       (_ : CallFlags.t),
-      (_ : Location.t)
+      (_ : Loc.t)
     ) ->
       let calleePnameString : string = Procname.to_string calleePname in
 
@@ -48,25 +48,27 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
       if is_lock calleePnameString then D.update_astate_on_lock astate
       else if is_unlock calleePnameString then D.update_astate_on_unlock astate
       else
-      (
         let astate : D.t =
           D.update_astate_on_function_call astate calleePnameString
         in
 
         (* Update the abstract state with the function summary as well, if it is
            possible. *)
-        match Payload.read procData.pdesc calleePname with
-        | Some (summary : D.summary) ->
-          D.update_astate_on_function_call_with_summary astate summary
-        | None -> astate
-      )
+        ( match Payload.read procData.pdesc calleePname with
+          | Some (summary : D.summary) ->
+            D.update_astate_on_function_call_with_summary astate summary
+
+          | None -> astate
+        )
       (* in *)
 
-      (* F.fprintf F.std_formatter "\nFunction: %s\n" calleePnameString; *)
-      (* D.pp F.std_formatter astate; *)
-      (* F.fprintf F.std_formatter "\n\n"; *)
+      (* F.fprintf
+        F.std_formatter
+        "\n\nFunction: %s\n%a\n\n"
+        calleePnameString D.pp astate; *)
 
       (* astate *)
+
     | _ -> astate
 
   let pp_session_name (_ : CFG.Node.t) (fmt : F.formatter) : unit =
@@ -76,8 +78,6 @@ end
 (** The analyzer definition. *)
 module Analyzer =
   LowerHil.MakeAbstractInterpreter (TransferFunctions (ProcCfg.Normal))
-
-let atomicSequencesFile : string = "atomic-sequences"
 
 let analyze_procedure (procArgs : Callbacks.proc_callback_args) : Summary.t =
   let procNameString : string =
@@ -99,16 +99,18 @@ let analyze_procedure (procArgs : Callbacks.proc_callback_args) : Summary.t =
     (* A debug log. *)
     let fmt : F.formatter = F.str_formatter
     and _ : string = F.flush_str_formatter () in
-    F.fprintf fmt "\n\nFunction: %s\n" procNameString;
-    D.pp fmt updatedPost;
-    D.pp_summary fmt convertedSummary;
-    F.pp_print_string fmt "\n";
+
+    F.fprintf
+      fmt
+      "\n\nFunction: %s\n%a%a\n\n"
+      procNameString D.pp updatedPost D.pp_summary convertedSummary;
     Logging.(debug Capture Verbose) "%s" (F.flush_str_formatter ());
 
     Payload.update_summary convertedSummary procArgs.summary
+
   | None ->
     Logging.(die InternalError)
-      "The detection of atomic sequences failed to compute a post for the '%s'."
+      "The detection of atomic sequences failed to compute a post for '%s'."
       procNameString
 
 let print_atomic_sequences
@@ -117,8 +119,7 @@ let print_atomic_sequences
   Utils.create_dir inferDir;
 
   (* Print to the file. *)
-  let file : string = inferDir ^ "/" ^ atomicSequencesFile in
-  let oc : OC.t = OC.create ~binary:false file in
+  let oc : OC.t = OC.create ~binary:false atomicSequencesFile in
   let print_atomic_sequences ((_ : Tenv.t), (procDesc : Procdesc.t)) : unit =
     let procName : Procname.t = Procdesc.get_proc_name procDesc in
 
@@ -129,7 +130,7 @@ let print_atomic_sequences
   L.iter clusterArgs.procedures ~f:print_atomic_sequences;
   OC.close oc;
 
-  F.pp_print_string
+  F.fprintf
     F.std_formatter
-    ( "The detection of atomic sequences produced an output (atomic " ^
-      "sequences) into the file '" ^ file ^ "'.\n" )
+    "The detection of atomic sequences produced an output (atomic sequences) into file '%s'.\n"
+    atomicSequencesFile

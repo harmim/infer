@@ -3,6 +3,11 @@
 open! IStd
 
 module F = Format
+module Loc = Location
+
+(* ****************************** Initialisation **************************** *)
+
+val initialise : bool -> unit
 
 (* ****************************** Astate ************************************ *)
 
@@ -15,15 +20,30 @@ val initial : t
 val pp : F.formatter -> t -> unit
 (** Pretty printer of the abstract state. *)
 
+val update_astate_on_function_call : t -> string -> Loc.t -> t
+(** Updates the abstract state on the function call. *)
+
+val update_astate_on_lock : t -> t
+(** Updates the abstract state on a lock call. *)
+
+val update_astate_on_unlock : t -> t
+(** Updates the abstract state on an unlock call. *)
+
 (* ****************************** Summary *********************************** *)
 
 type summary
 (** The summary of a function. *)
 
-val initialSummary : summary
-
 val pp_summary : F.formatter -> summary -> unit
 (** Pretty printer of the summary. *)
+
+val update_astate_on_function_call_with_summary : t -> summary -> Loc.t -> t
+(** Updates the abstract state on the function call with its summary. *)
+
+val convert_astate_to_summary : t -> summary
+(** Converts the abstract state to a summary. *)
+
+val report_atomicity_violations : t -> (Loc.t -> string -> unit) -> unit
 
 (* ****************************** Operators ********************************* *)
 
