@@ -26,9 +26,8 @@ let lists_eq (l1 : 'a list) (l2 : 'a list) (cmp : ('a -> 'a -> bool)) : bool =
   (
     let eq : bool ref = ref true in
 
-    L.iter2_exn
-      l1 l2 ~f:( fun (e1 : 'a) (e2 : 'a) : unit ->
-        if not (cmp e1 e2) then eq := false );
+    L.iter2_exn l1 l2 ~f:( fun (e1 : 'a) (e2 : 'a) : unit ->
+      if not (cmp e1 e2) then eq := false );
 
     !eq
   )
