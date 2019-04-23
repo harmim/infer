@@ -9,18 +9,18 @@ module OC = Out_channel
 module P = Pervasives
 module S = String
 
-(* ****************************** Astate ************************************ *)
+(* ****************************** Modules *********************************** *)
 
 (** Set of a string list. *)
 module StringListSet = Set.Make (struct
   type t = string list
   [@@ deriving sexp]
 
-  let compare (e1 : t) (e2 : t) : int =
-    if string_lists_eq e1 e2 then 0
-    else if P.compare e1 e2 > 0 then 1
-    else -1
+  let compare (s1 : t) (s2 : t) : int =
+    if string_lists_eq s1 s2 then 0 else if P.compare s1 s2 > 0 then 1 else -1
 end)
+
+(* ****************************** Astate ************************************ *)
 
 (** Element of an abstract state. *)
 type tElement =
@@ -28,21 +28,21 @@ type tElement =
   ; callSequence : string list
   ; finalCalls : StringListSet.t
   ; isInLock : bool }
-  [@@ deriving sexp]
+[@@ deriving sexp]
 
 (** Set of type tElement is an abstract state. *)
 module TSet = Set.Make (struct
   type t = tElement
   [@@ deriving sexp]
 
-  let compare (e1 : t) (e2 : t) : int =
+  let compare (s1 : t) (s2 : t) : int =
     if
-      string_lists_eq e1.firstOccurrences e2.firstOccurrences
-      && string_lists_eq e1.callSequence e2.callSequence
-      && StringListSet.equal e1.finalCalls e2.finalCalls
-      && phys_equal e1.isInLock e2.isInLock
+      string_lists_eq s1.firstOccurrences s2.firstOccurrences
+      && string_lists_eq s1.callSequence s2.callSequence
+      && StringListSet.equal s1.finalCalls s2.finalCalls
+      && phys_equal s1.isInLock s2.isInLock
     then 0
-    else if P.compare e1 e2 > 0 then 1
+    else if P.compare s1 s2 > 0 then 1
     else -1
 end)
 
@@ -150,7 +150,7 @@ let update_astate_on_lock (astate : t) : t =
     else
       let callSequence : string list = astateEl.firstOccurrences @ ["("] in
 
-      (* Clear the first occurrences, update the call sequence and
+      (* Clear the first occurrences, update the call sequence, and
          set 'isInLock'. *)
       { astateEl with
         firstOccurrences= []
@@ -191,8 +191,8 @@ let update_astate_at_the_end_of_function (astate : t) : t =
           astateEl.finalCalls astateEl.callSequence astateEl.firstOccurrences
     in
 
-    (* Clear the first occurrences and the call sequence, update the final calls
-       and unset 'isInLock'. *)
+    (* Clear the first occurrences and the call sequence, update the final
+       calls and unset 'isInLock'. *)
     { firstOccurrences= []
     ; callSequence= []
     ; finalCalls= finalCalls
