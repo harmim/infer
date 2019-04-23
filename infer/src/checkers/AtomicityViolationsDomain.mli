@@ -8,50 +8,53 @@ module Loc = Location
 (* ****************************** Initialisation **************************** *)
 
 val initialise : bool -> unit
+(** Initialisation of the abstract domain. *)
 
 (* ****************************** Astate ************************************ *)
 
 type t
-(** The abstract state of a function. *)
+(** Abstract state of a function. *)
 
 val initial : t
-(** The initial abstract state of each analysed function. *)
+(** Initial abstract state of an analysed function. *)
 
 val pp : F.formatter -> t -> unit
-(** Pretty printer of the abstract state. *)
+(** Pretty printer of an abstract state. *)
 
 val update_astate_on_function_call : t -> string -> Loc.t -> t
-(** Updates the abstract state on the function call. *)
+(** Updates an abstract state on a function call. *)
 
 val update_astate_on_lock : t -> t
-(** Updates the abstract state on a lock call. *)
+(** Updates an abstract state on a lock call. *)
 
 val update_astate_on_unlock : t -> t
-(** Updates the abstract state on an unlock call. *)
+(** Updates an abstract state on an unlock call. *)
 
 (* ****************************** Summary *********************************** *)
 
 type summary
-(** The summary of a function. *)
+(** Summary of a function. *)
 
 val pp_summary : F.formatter -> summary -> unit
-(** Pretty printer of the summary. *)
+(** Pretty printer of a summary. *)
 
 val update_astate_on_function_call_with_summary : t -> summary -> Loc.t -> t
-(** Updates the abstract state on the function call with its summary. *)
+(** Updates an abstract state on a function call with its summary. *)
 
 val convert_astate_to_summary : t -> summary
-(** Converts the abstract state to a summary. *)
+(** Converts an abstract state to a summary. *)
 
 val report_atomicity_violations : t -> (Loc.t -> string -> unit) -> unit
+(** Reports atomicity violations from an abstract state using reporting
+    function. *)
 
 (* ****************************** Operators ********************************* *)
 
 val ( <= ) : lhs:t -> rhs:t -> bool
-(** The comparison operator of abstract states. *)
+(** Comparison operator of abstract states. *)
 
 val join : t -> t -> t
-(** The join operator of abstract states. *)
+(** Join operator of abstract states. *)
 
 val widen : prev:t -> next:t -> num_iters:int -> t
-(** The widen operator of abstract states. *)
+(** Widen operator of abstract states. *)
