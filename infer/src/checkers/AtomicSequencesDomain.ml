@@ -60,21 +60,17 @@ let pp (fmt : F.formatter) (astate : t) : unit =
   let lastAstateEl : tElement = TSet.max_elt_exn astate in
 
   (* firstOccurrences *)
-  let print_first_occurrences (astateEl : tElement) : unit =
-    F.fprintf fmt "{%s}" (S.concat astateEl.firstOccurrences ~sep:" ");
-    if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
-  in
   F.pp_print_string fmt "firstOccurrences: ";
-  TSet.iter astate ~f:print_first_occurrences;
+  TSet.iter astate ~f:( fun (astateEl : tElement) : unit ->
+    F.fprintf fmt "{%s}" (S.concat astateEl.firstOccurrences ~sep:" ");
+    if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " " );
   F.pp_print_string fmt "\n";
 
   (* callSequence *)
-  let print_call_sequence (astateEl : tElement) : unit =
-    F.fprintf fmt "{%s}" (S.concat astateEl.callSequence ~sep:" ");
-    if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " "
-  in
   F.pp_print_string fmt "callSequence: ";
-  TSet.iter astate ~f:print_call_sequence;
+  TSet.iter astate ~f:( fun (astateEl : tElement) : unit ->
+    F.fprintf fmt "{%s}" (S.concat astateEl.callSequence ~sep:" ");
+    if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt " " );
   F.pp_print_string fmt "\n";
 
   (* finalCalls *)
@@ -104,12 +100,10 @@ let pp (fmt : F.formatter) (astate : t) : unit =
   F.pp_print_string fmt "\n";
 
   (* isInLock *)
-  let print_is_in_lock (astateEl : tElement) : unit =
-    F.fprintf fmt "%B" astateEl.isInLock;
-    if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt ", "
-  in
   F.pp_print_string fmt "isInLock: [";
-  TSet.iter astate ~f:print_is_in_lock;
+  TSet.iter astate ~f:( fun (astateEl : tElement) : unit ->
+    F.fprintf fmt "%B" astateEl.isInLock;
+    if not (phys_equal astateEl lastAstateEl) then F.pp_print_string fmt ", " );
   F.pp_print_string fmt "]\n\n"
 
 (** Adds a call sequence to final calls. *)
@@ -308,6 +302,6 @@ let join (astate1 : t) (astate2 : t) : t =
   (* result *)
 
 let widen ~prev:(p : t) ~next:(n : t) ~num_iters:(i : int) : t =
-  (* Join previous and next abstract states. (just 3 iterations
+  (* Join previous and next abstract states. (just 2 iterations
      for better scalability) *)
-  if P.( <= ) i 3 then join p n else p
+  if P.( <= ) i 2 then join p n else p
