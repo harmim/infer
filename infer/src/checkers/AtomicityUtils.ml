@@ -1,4 +1,5 @@
 (** Atomicity violations analysis utilities implementation. *)
+(** Author: Dominik Harmim <xharmi00@stud.fit.vutbr.cz> *)
 
 open! IStd
 

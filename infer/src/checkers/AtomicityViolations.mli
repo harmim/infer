@@ -1,4 +1,5 @@
 (** Detection of atomicity violations interface. *)
+(** Author: Dominik Harmim <xharmi00@stud.fit.vutbr.cz> *)
 
 open! IStd
 
