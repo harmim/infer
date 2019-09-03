@@ -33,7 +33,7 @@ type t =
   | SelfInBlock
   | Starvation
   | Uninit
-  | AtomicSequences
+  | AtomicSets
   | AtomicityViolations
 [@@deriving equal, enumerate]
 
@@ -251,12 +251,12 @@ let config checker =
       ; cli_flag= "uninit"
       ; enabled_by_default= true
       ; cli_deprecated_flags= [] }
-  | AtomicSequences ->
+  | AtomicSets ->
       { support= supports_clang
       ; short_documentation=
-        "atomicity violations analysis - detection of atomic sequences"
+        "atomicity violations analysis - detection of atomic sets"
       ; show_in_help= true
-      ; cli_flag= "atomic-sequences"
+      ; cli_flag= "atomic-sets"
       ; enabled_by_default= false
       ; cli_deprecated_flags= [] }
   | AtomicityViolations ->

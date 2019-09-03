@@ -109,13 +109,13 @@ OPTIONS
            Additional Buck flavors to append to targets discovered by the
            --buck-compilation-database option.           See also infer-capture(1).
 
-       --atomic-sequences
+       --atomic-sets
            Activates: atomicity violations analysis - detection of atomic
-           sequences (Conversely: --no-atomic-sequences)           See also infer-analyze(1).
+           sets (Conversely: --no-atomic-sets)           See also infer-analyze(1).
 
-       --atomic-sequences-only
-           Activates: Enable --atomic-sequences and disable all other
-           checkers (Conversely: --no-atomic-sequences-only)           See also infer-analyze(1).
+       --atomic-sets-only
+           Activates: Enable --atomic-sets and disable all other checkers
+           (Conversely: --no-atomic-sets-only)           See also infer-analyze(1).
 
        --atomicity-violations
            Activates: atomicity violations analysis - detection of atomicity

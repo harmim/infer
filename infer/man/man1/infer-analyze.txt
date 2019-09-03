@@ -25,13 +25,13 @@ OPTIONS
            Activates: Enable --annotation-reachability and disable all other
            checkers (Conversely: --no-annotation-reachability-only)
 
-       --atomic-sequences
+       --atomic-sets
            Activates: atomicity violations analysis - detection of atomic
-           sequences (Conversely: --no-atomic-sequences)
+           sets (Conversely: --no-atomic-sets)
 
-       --atomic-sequences-only
-           Activates: Enable --atomic-sequences and disable all other
-           checkers (Conversely: --no-atomic-sequences-only)
+       --atomic-sets-only
+           Activates: Enable --atomic-sets and disable all other checkers
+           (Conversely: --no-atomic-sets-only)
 
        --atomicity-violations
            Activates: atomicity violations analysis - detection of atomicity

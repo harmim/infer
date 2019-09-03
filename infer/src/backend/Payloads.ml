@@ -25,7 +25,7 @@ type t =
   ; starvation: StarvationDomain.summary option
   ; nullsafe: NullsafeSummary.t option
   ; uninit: UninitDomain.Summary.t option
-  ; atomic_sequences: AtomicSequencesDomain.summary option
+  ; atomic_sets: AtomicSetsDomain.summary option
   ; atomicity_violations: AtomicityViolationsDomain.summary option }
 [@@deriving fields]
 
@@ -53,7 +53,7 @@ let fields =
     ~starvation:(fun f -> mk f "Starvation" StarvationDomain.pp_summary)
     ~nullsafe:(fun f -> mk f "Nullsafe" NullsafeSummary.pp)
     ~uninit:(fun f -> mk f "Uninitialised" UninitDomain.Summary.pp)
-    ~atomic_sequences:(fun f -> mk f "AtomicSequences" AtomicSequencesDomain.pp_summary)
+    ~atomic_sets:(fun f -> mk f "AtomicSets" AtomicSetsDomain.pp_summary)
     ~atomicity_violations:(fun f -> mk f "AtomicityViolations" AtomicityViolationsDomain.pp_summary)
 
 
@@ -80,5 +80,5 @@ let empty =
   ; starvation= None
   ; nullsafe= None
   ; uninit= None
-  ; atomic_sequences= None
+  ; atomic_sets= None
   ; atomicity_violations= None }

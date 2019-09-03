@@ -1,4 +1,4 @@
-(** Detection of atomic sequences domain interface. *)
+(** Detection of atomic sets domain interface. *)
 (** Author: Dominik Harmim <xharmi00@stud.fit.vutbr.cz> *)
 
 open! IStd
@@ -43,9 +43,9 @@ val update_astate_on_function_call_with_summary : t -> summary -> t
 val convert_astate_to_summary : t -> summary
 (** Converts an abstract state to a summary. *)
 
-val print_atomic_sequences : OC.t -> string -> summary -> unit
-(** Prints atomic sequences from a given summary and a function name
-    to a given output channel. *)
+val print_atomic_sets : OC.t -> string -> summary -> unit
+(** Prints atomic sets from a given summary and a function name to a given
+    output channel. *)
 
 (* ****************************** Operators ********************************* *)
 

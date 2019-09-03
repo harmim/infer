@@ -12,7 +12,7 @@ let inferDir : string =
   Escape.escape_filename
     (CommandLineOption.init_work_dir ^ "/infer-atomicity-out")
 
-let atomicSequencesFile : string =  inferDir ^ "/atomic-sequences"
+let atomicSetsFile : string =  inferDir ^ "/atomic-sets"
 
 (* ****************************** Strings *********************************** *)
 
@@ -51,8 +51,3 @@ let string_list_add_unique (l : string list) (f : string) : string list =
 let string_list_list_add_unique
   (ll : (string list) list) (l : string list) : (string list) list =
   list_add_unique ll l string_lists_eq
-
-let list_remove_last (l : 'a list) : 'a list =
-  let len : int = L.length l in
-
-  L.filteri l ~f:(fun (i : int) (_ : 'a) : bool -> not (phys_equal i (len - 1)))

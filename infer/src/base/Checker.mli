@@ -33,7 +33,7 @@ type t =
   | SelfInBlock
   | Starvation
   | Uninit
-  | AtomicSequences
+  | AtomicSets
   | AtomicityViolations
 [@@deriving equal, enumerate]
 

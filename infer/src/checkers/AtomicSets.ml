@@ -1,10 +1,10 @@
-(** Detection of atomic sequences implementation. *)
+(** Detection of atomic sets implementation. *)
 (** Author: Dominik Harmim <xharmi00@stud.fit.vutbr.cz> *)
 
 open! IStd
 open! AtomicityUtils
 
-module D = AtomicSequencesDomain (* Abstract domain definition. *)
+module D = AtomicSetsDomain (* Abstract domain definition. *)
 module F = Format
 module L = List
 module Loc = Location
@@ -18,9 +18,9 @@ module Payload = SummaryPayload.Make (struct
   type t = D.summary (* Type of the payload is a domain summary. *)
 
   let update_payloads (payload : t) (payloads : Payloads.t) : Payloads.t =
-    {payloads with atomic_sequences= Some payload}
+    {payloads with atomic_sets= Some payload}
 
-  let of_payloads (payloads : Payloads.t) : t option = payloads.atomic_sequences
+  let of_payloads (payloads : Payloads.t) : t option = payloads.atomic_sets
 end)
 
 (** Transfer function for abstract states of an analysed function. *)
@@ -75,7 +75,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     | _ -> astate
 
   let pp_session_name (_ : CFG.Node.t) (fmt : F.formatter) : unit =
-    F.pp_print_string fmt "AtomicSequences"
+    F.pp_print_string fmt "AtomicSets"
 end
 
 (** Analyser definition. *)
@@ -110,25 +110,25 @@ let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
 
   | None ->
     Logging.(die InternalError)
-      "Detection of atomic sequences failed to compute a post for '%s'." pNameS
+      "Detection of atomic sets failed to compute a post for '%s'." pNameS
 
-let print_atomic_sequences (args : Callbacks.cluster_callback_args) : unit =
+let print_atomic_sets (args : Callbacks.cluster_callback_args) : unit =
   (* Create a directory for printing. *)
   Utils.create_dir inferDir;
 
   (* Print to a file. *)
-  let oc : OC.t = OC.create ~binary:false atomicSequencesFile in
-  let print_atomic_sequences ((_ : Tenv.t), (pDesc : Pdesc.t)) : unit =
+  let oc : OC.t = OC.create ~binary:false atomicSetsFile in
+  let print_atomic_sets ((_ : Tenv.t), (pDesc : Pdesc.t)) : unit =
     let pName : Pname.t = Pdesc.get_proc_name pDesc in
 
     Option.iter
       (Payload.read pDesc pName) ~f:( fun (summary : D.summary) : unit ->
-        D.print_atomic_sequences oc (Pname.to_string pName) summary )
+        D.print_atomic_sets oc (Pname.to_string pName) summary )
   in
-  L.iter args.procedures ~f:print_atomic_sequences;
+  L.iter args.procedures ~f:print_atomic_sets;
   OC.close oc;
 
   F.fprintf
     F.std_formatter
-    "Detection of atomic sequences produced an output into file '%s'.\n"
-    atomicSequencesFile
+    "Detection of atomic sets produced an output into file '%s'.\n"
+    atomicSetsFile

@@ -8,8 +8,8 @@ open! IStd
 val inferDir : string
 (** Infer work directory. *)
 
-val atomicSequencesFile : string
-(** File for storing atomic sequences. *)
+val atomicSetsFile : string
+(** File for storing atomic sets. *)
 
 (* ****************************** Strings *********************************** *)
 
@@ -42,6 +42,3 @@ val string_list_add_unique : string list -> string -> string list
 val string_list_list_add_unique :
   (string list) list -> string list -> (string list) list
 (** Adds a string list element to a list without duplicities. *)
-
-val list_remove_last : 'a list -> 'a list
-(** Removes the last element from a list. *)

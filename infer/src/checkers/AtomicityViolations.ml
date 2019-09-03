@@ -86,7 +86,7 @@ let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
 
   let pNameS : string = Pname.to_string (Pdesc.get_proc_name args.proc_desc) in
 
-  (* Compute the abstract state for the a given function. *)
+  (* Compute the abstract state for a given function. *)
   match Analyser.compute_post
     (Pdata.make_default args.proc_desc args.tenv) ~initial:D.initial
   with
