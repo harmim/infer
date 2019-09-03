@@ -119,21 +119,25 @@ let initialise (_ : bool) : unit =
           Str.split
             (Str.regexp " ") (Str.global_replace (Str.regexp "}\|{\|,") "" set)
         in
-        let functionsLastIndex : int = (L.length functions) - 1 in
+        let functionsCount : int = L.length functions in
 
-        for i = 0 to functionsLastIndex do
+        if phys_equal functionsCount 1 then
           atomicPairs :=
-            AtomicPairSet.add !atomicPairs ("", (L.nth_exn functions i));
+            AtomicPairSet.add !atomicPairs ("", (L.nth_exn functions 0))
+        else
+          for i = 0 to functionsCount - 1 do
+            for j = i + 1 to functionsCount - 1 do
+              atomicPairs :=
+                AtomicPairSet.add
+                  !atomicPairs
+                  ((L.nth_exn functions i), (L.nth_exn functions j));
 
-          for j = i + 1 to functionsLastIndex do
-            atomicPairs :=
-              AtomicPairSet.add
-                !atomicPairs ((L.nth_exn functions i), (L.nth_exn functions j));
-            atomicPairs :=
-              AtomicPairSet.add
-                !atomicPairs ((L.nth_exn functions i), (L.nth_exn functions j))
+              atomicPairs :=
+                AtomicPairSet.add
+                  !atomicPairs
+                  ((L.nth_exn functions j), (L.nth_exn functions i))
+            done
           done
-        done
       in
       L.iter sets ~f:iterator
     in

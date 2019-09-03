@@ -272,5 +272,7 @@ let join (astate1 : t) (astate2 : t) : t =
 
   (* result *)
 
-(* Join previous and next abstract states. *)
-let widen ~prev:(p : t) ~next:(n : t) ~num_iters:(_ : int) : t = join p n
+let widen ~prev:(p : t) ~next:(n : t) ~num_iters:(i : int) : t =
+  (* Join previous and next abstract states. (just 10 iterations
+     for better scalability) *)
+  if P.( <= ) i 10 then join p n else p
