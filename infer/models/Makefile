@@ -12,6 +12,9 @@ JAVA_MODELS_DIR = java
 OBJC_MODELS_DIR = objc/src
 OBJCPP_MODELS_DIR = objcpp/src
 
+# hotfix for https://github.com/facebook/infer/issues/1002
+HAS_OBJC = 0
+
 MODELS_INFER_OUT = infer-out
 MODELS_INFER_OPTIONS = --jobs 1 --biabduction-only --results-dir $(MODELS_INFER_OUT) --biabduction-models-mode
 
