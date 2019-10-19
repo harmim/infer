@@ -8,18 +8,13 @@ module D = AtomicityViolationsDomain (* Abstract domain definition. *)
 module F = Format
 module Loc = Location
 module Pdata = ProcData
-module Pdesc = Procdesc
 module Pname = Typ.Procname
 
 (** Summary payload for analysed functions. *)
 module Payload = SummaryPayload.Make (struct
   type t = D.summary (* Type of the payload is a domain summary. *)
 
-  let update_payloads (payload : t) (payloads : Payloads.t) : Payloads.t =
-    {payloads with atomicity_violations= Some payload}
-
-  let of_payloads (payloads : Payloads.t) : t option =
-    payloads.atomicity_violations
+  let field = Payloads.Fields.atomicity_violations
 end)
 
 (** Transfer function for abstract states of an analysed function. *)
@@ -56,7 +51,9 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
 
         (* Update the abstract state with the function summary as well if it is
            possible. *)
-        ( match Payload.read pData.pdesc calleePname with
+        ( match Payload.read
+            ~caller_summary:pData.summary ~callee_pname:calleePname
+          with
           | Some (summary : D.summary) ->
             D.update_astate_on_function_call_with_summary astate summary loc
 
@@ -84,11 +81,13 @@ module Analyser =
 let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
   D.initialise true; (* Domain initialisation. *)
 
-  let pNameS : string = Pname.to_string (Pdesc.get_proc_name args.proc_desc) in
+  let pName : Pname.t = Summary.get_proc_name args.summary in
+  let pNameS : string = Pname.to_string pName
+  and tenv : Tenv.t = Exe_env.get_tenv args.exe_env pName in
 
   (* Compute the abstract state for a given function. *)
   match Analyser.compute_post
-    (Pdata.make_default args.proc_desc args.tenv) ~initial:D.initial
+    (Pdata.make_default args.summary tenv) ~initial:D.initial
   with
   | Some (post : D.t) ->
     (* Convert the abstract state to the function summary. *)

@@ -10,17 +10,13 @@ module L = List
 module Loc = Location
 module OC = Out_channel
 module Pdata = ProcData
-module Pdesc = Procdesc
 module Pname = Typ.Procname
 
 (** Summary payload for analysed functions. *)
 module Payload = SummaryPayload.Make (struct
   type t = D.summary (* Type of the payload is a domain summary. *)
 
-  let update_payloads (payload : t) (payloads : Payloads.t) : Payloads.t =
-    {payloads with atomic_sets= Some payload}
-
-  let of_payloads (payloads : Payloads.t) : t option = payloads.atomic_sets
+  let field = Payloads.Fields.atomic_sets
 end)
 
 (** Transfer function for abstract states of an analysed function. *)
@@ -57,7 +53,9 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
 
         (* Update the abstract state with the function summary as well if it is
            possible. *)
-        ( match Payload.read pData.pdesc calleePname with
+        ( match Payload.read
+            ~caller_summary:pData.summary ~callee_pname:calleePname
+          with
           | Some (summary : D.summary) ->
             D.update_astate_on_function_call_with_summary astate summary
 
@@ -83,11 +81,13 @@ module Analyser =
   LowerHil.MakeAbstractInterpreter (TransferFunctions (ProcCfg.Normal))
 
 let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
-  let pNameS : string = Pname.to_string (Pdesc.get_proc_name args.proc_desc) in
+  let pName : Pname.t = Summary.get_proc_name args.summary in
+  let pNameS : string = Pname.to_string pName
+  and tenv : Tenv.t = Exe_env.get_tenv args.exe_env pName in
 
   (* Compute the abstract state for a given function. *)
   match Analyser.compute_post
-    (Pdata.make_default args.proc_desc args.tenv) ~initial:D.initial
+    (Pdata.make_default args.summary tenv) ~initial:D.initial
   with
   | Some (post : D.t) ->
     (* Update the abstract state at the end of a function and convert
@@ -118,11 +118,12 @@ let print_atomic_sets (args : Callbacks.cluster_callback_args) : unit =
 
   (* Print to a file. *)
   let oc : OC.t = OC.create ~binary:false atomicSetsFile in
-  let print_atomic_sets ((_ : Tenv.t), (pDesc : Pdesc.t)) : unit =
-    let pName : Pname.t = Pdesc.get_proc_name pDesc in
+  let print_atomic_sets ((_ : Tenv.t), (summary : Summary.t)) : unit =
+    let pName : Pname.t = Summary.get_proc_name summary in
 
     Option.iter
-      (Payload.read pDesc pName) ~f:( fun (summary : D.summary) : unit ->
+      (Payload.read ~caller_summary:summary ~callee_pname:pName)
+        ~f:( fun (summary : D.summary) : unit ->
         D.print_atomic_sets oc (Pname.to_string pName) summary )
   in
   L.iter args.procedures ~f:print_atomic_sets;
