@@ -16,7 +16,7 @@ module Pname = Typ.Procname
 module Payload = SummaryPayload.Make (struct
   type t = D.summary (* Type of the payload is a domain summary. *)
 
-  let field = Payloads.Fields.atomic_sets
+  let field : (Payloads.t, t option) Field.t = Payloads.Fields.atomic_sets
 end)
 
 (** Transfer function for abstract states of an analysed function. *)
