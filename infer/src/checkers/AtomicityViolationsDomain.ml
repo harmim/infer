@@ -98,7 +98,8 @@ let initialise (_ : bool) : unit =
       | `Yes -> ()
       | _ ->
         Logging.(die UserError)
-          "File '%s' does not exist. Run the detection of atomic sets first using '--atomic-sets-only'."
+          "File '%s' does not exist. Run the detection of atomic sets first \
+           using '--atomic-sets-only'."
           atomicSetsFile
     );
 
@@ -365,11 +366,13 @@ let report_atomicity_violations
         and msg : string =
           if not (s_empty fst) && not (s_empty snd) then
             F.asprintf
-              "Atomicity Violation! - Functions '%s' and '%s' should be called atomically."
+              "Atomicity Violation! - Functions '%s' and '%s' should be called \
+               atomically."
               fst snd
           else
             F.asprintf
-              "Atomicity Violation! - Function '%s' should be called atomically."
+              "Atomicity Violation! - Function '%s' should be called \
+               atomically."
               (if s_empty fst then snd else fst)
         in
 
@@ -397,5 +400,6 @@ let join (astate1 : t) (astate2 : t) : t =
 
   (* result *)
 
-(* Join previous and next abstract states. *)
-let widen ~prev:(p : t) ~next:(n : t) ~num_iters:(_ : int) : t = join p n
+let widen ~prev:(p : t) ~next:(n : t) ~num_iters:(i : int) : t =
+  (* Join previous and next abstract states. *)
+  if P.( <= ) i Config.atomicity_violations_widen_limit then join p n else p

@@ -642,6 +642,10 @@ val type_size : bool
 
 val uninit_interproc : bool
 
+val atomic_sets_widen_limit : int
+
+val atomicity_violations_widen_limit : int
+
 val unsafe_malloc : bool
 
 val worklist_mode : int

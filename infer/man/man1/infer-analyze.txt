@@ -336,6 +336,16 @@ OPTIONS
        --uninit-only
            Activates: Enable --uninit and disable all other checkers
            (Conversely: --no-uninit-only)
+ATOMICITY VIOLATIONS CHECKER OPTIONS
+       --atomic-sets-widen-limit int
+           Specify the maximum number of iterations in a widening operator in
+           'atomic-sets' checker. Under-approximation after specified loop
+           iterations. Default value is 5.
+
+       --atomicity-violations-widen-limit int
+           Specify the maximum number of iterations in a widening operator in
+           'atomicity-violations' checker. Under-approximation after
+           specified loop iterations. Default value is 1000.
 BIABDUCTION CHECKER OPTIONS
        --biabduction-fallback-model-alloc-pattern string
            Regex of methods that should be modelled as allocs if definition

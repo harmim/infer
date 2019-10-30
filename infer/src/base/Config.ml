@@ -179,6 +179,9 @@ let manual_racerd = "RACERD CHECKER OPTIONS"
 
 let manual_siof = "SIOF CHECKER OPTIONS"
 
+let manual_atomicity_violations : string =
+  "ATOMICITY VIOLATIONS CHECKER OPTIONS"
+
 let max_narrows = 5
 
 (** Maximum number of widens that can be performed before the analysis will intentionally crash.
@@ -2275,6 +2278,30 @@ and type_size =
     "Consider the size of types during analysis, e.g. cannot use an int pointer to write to a char"
 
 
+and atomic_sets_widen_limit : int ref =
+  CLOpt.mk_int
+    ~default:5
+    ~default_to_string:(fun (i : int) : string -> Pervasives.string_of_int i)
+    ~long:"atomic-sets-widen-limit"
+    ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
+    ~meta:"int"
+    "Specify the maximum number of iterations in a widening operator in \
+     'atomic-sets' checker. Under-approximation after specified loop \
+     iterations. Default value is 5."
+
+
+and atomicity_violations_widen_limit : int ref =
+  CLOpt.mk_int
+    ~default:1000
+    ~default_to_string:(fun (i : int) : string -> Pervasives.string_of_int i)
+    ~long:"atomicity-violations-widen-limit"
+    ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
+    ~meta:"int"
+    "Specify the maximum number of iterations in a widening operator in \
+     'atomicity-violations' checker. Under-approximation after specified loop \
+     iterations. Default value is 1000."
+
+
 and uninit_interproc =
   CLOpt.mk_bool ~long:"uninit-interproc" "Run uninit check in the experimental interprocedural mode"
 
@@ -3078,6 +3105,10 @@ and tv_limit_filtered = !tv_limit_filtered
 and type_size = !type_size
 
 and uninit_interproc = !uninit_interproc
+
+and atomic_sets_widen_limit : int = !atomic_sets_widen_limit
+
+and atomicity_violations_widen_limit : int = !atomicity_violations_widen_limit
 
 and unsafe_malloc = !unsafe_malloc
 
