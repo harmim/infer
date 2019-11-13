@@ -3,12 +3,13 @@
 
 open! IStd
 
+module Pname = Typ.Procname
 module Set = Caml.Set
 
 (* ****************************** Modules *********************************** *)
 
-(** Set of strings. *)
 module SSet : module type of Set.Make (String)
+(** Set of strings. *)
 
 (* ****************************** Constants ********************************* *)
 
@@ -26,8 +27,13 @@ val s_eq : string -> string -> bool
 val s_empty : string -> bool
 (** Checks whether a string is an empty string. *)
 
-val is_lock : string -> bool
+(* ****************************** Functions ********************************* *)
+
+val f_is_lock : Pname.t -> bool
 (** Checks whether a given function is a lock. *)
 
-val is_unlock : string -> bool
+val f_is_unlock : Pname.t -> bool
 (** Checks whether a given function is an unlock. *)
+
+val f_is_ignored : Pname.t -> bool
+(** Checkes whether a given function is ignored. *)

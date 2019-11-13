@@ -41,34 +41,38 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
         (_ : CallFlags.t),
         (_ : Loc.t)
       ) ->
-      let calleePnameS : string = Pname.to_string calleePname in
-
-      (* let astate : D.t = *)
-      if is_lock calleePnameS then D.update_astate_on_lock astate
-      else if is_unlock calleePnameS then D.update_astate_on_unlock astate
+      if f_is_ignored calleePname then astate
       else
-        let astate : D.t =
-          D.update_astate_on_function_call astate calleePnameS
-        in
+      (
+        let calleePnameString : string = Pname.to_string calleePname in
 
-        (* Update the abstract state with the function summary as well if it is
-           possible. *)
-        ( match Payload.read
-            ~caller_summary:pData.summary ~callee_pname:calleePname
-          with
-          | Some (summary : D.summary) ->
-            D.update_astate_on_function_call_with_summary astate summary
+        (* let astate : D.t = *)
+        if f_is_lock calleePname then D.update_astate_on_lock astate
+        else if f_is_unlock calleePname then D.update_astate_on_unlock astate
+        else
+          let astate : D.t =
+            D.update_astate_on_function_call astate calleePnameString
+          in
 
-          | None -> astate
-        )
-      (* in *)
+          (* Update the abstract state with the function summary as well if it
+             is possible. *)
+          ( match Payload.read
+              ~caller_summary:pData.summary ~callee_pname:calleePname
+            with
+            | Some (summary : D.summary) ->
+              D.update_astate_on_function_call_with_summary astate summary
 
-      (* F.fprintf
-        F.std_formatter
-        "\n\nFunction: %s\n%a\n\n"
-        calleePnameS D.pp astate; *)
+            | None -> astate
+          )
+        (* in *)
 
-      (* astate *)
+        (* F.fprintf
+          F.std_formatter
+          "\n\nFunction: %s\n%a\n\n"
+          calleePnameString D.pp astate; *)
+
+        (* astate *)
+      )
 
     | _ -> astate
 
@@ -82,35 +86,41 @@ module Analyser =
 
 let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
   let pName : Pname.t = Summary.get_proc_name args.summary in
-  let pNameS : string = Pname.to_string pName
-  and tenv : Tenv.t = Exe_env.get_tenv args.exe_env pName in
 
-  (* Compute the abstract state for a given function. *)
-  match Analyser.compute_post
-    (Pdata.make_default args.summary tenv) ~initial:D.initial
-  with
-  | Some (post : D.t) ->
-    (* Update the abstract state at the end of a function and convert
-       the abstract state to the function summary. *)
-    let updatedPost : D.t = D.update_astate_at_the_end_of_function post in
-    let convertedSummary : D.summary =
-      D.convert_astate_to_summary updatedPost
-    in
+  if f_is_ignored pName then args.summary
+  else
+  (
+    let pNameString : string = Pname.to_string pName
+    and tenv : Tenv.t = Exe_env.get_tenv args.exe_env pName in
 
-    (* Debug log. *)
-    let fmt : F.formatter = F.str_formatter
-    and _ : string = F.flush_str_formatter () in
-    F.fprintf
-      fmt
-      "\n\nFunction: %s\n%a%a\n\n"
-      pNameS D.pp updatedPost D.pp_summary convertedSummary;
-    Logging.(debug Capture Verbose) "%s" (F.flush_str_formatter ());
+    (* Compute the abstract state for a given function. *)
+    match Analyser.compute_post
+      (Pdata.make_default args.summary tenv) ~initial:D.initial
+    with
+    | Some (post : D.t) ->
+      (* Update the abstract state at the end of a function and convert
+        the abstract state to the function summary. *)
+      let updatedPost : D.t = D.update_astate_at_the_end_of_function post in
+      let convertedSummary : D.summary =
+        D.convert_astate_to_summary updatedPost
+      in
 
-    Payload.update_summary convertedSummary args.summary
+      (* Debug log. *)
+      let fmt : F.formatter = F.str_formatter
+      and _ : string = F.flush_str_formatter () in
+      F.fprintf
+        fmt
+        "\n\nFunction: %s\n%a%a\n\n"
+        pNameString D.pp updatedPost D.pp_summary convertedSummary;
+      Logging.(debug Capture Verbose) "%s" (F.flush_str_formatter ());
 
-  | None ->
-    Logging.(die InternalError)
-      "Detection of atomic sets failed to compute a post for '%s'." pNameS
+      Payload.update_summary convertedSummary args.summary
+
+    | None ->
+      Logging.(die InternalError)
+        "Detection of atomic sets failed to compute a post for '%s'."
+        pNameString
+  )
 
 let print_atomic_sets (args : Callbacks.cluster_callback_args) : unit =
   (* Create a directory for printing. *)
