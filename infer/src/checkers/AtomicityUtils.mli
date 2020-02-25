@@ -9,23 +9,15 @@ module Set = Caml.Set
 (* ****************************** Modules *********************************** *)
 
 module SSet : module type of Set.Make (String)
-(** Set of strings. *)
+(** A set of strings. *)
 
 (* ****************************** Constants ********************************* *)
 
 val inferDir : string
-(** Infer work directory. *)
+(** The Infer work directory. *)
 
 val atomicSetsFile : string
-(** File for storing atomic sets. *)
-
-(* ****************************** Strings *********************************** *)
-
-val s_eq : string -> string -> bool
-(** Checks whether strings are equal. *)
-
-val s_empty : string -> bool
-(** Checks whether a string is an empty string. *)
+(** A file for storing atomic sets. *)
 
 (* ****************************** Functions ********************************* *)
 
@@ -36,4 +28,4 @@ val f_is_unlock : Pname.t -> bool
 (** Checks whether a given function is an unlock. *)
 
 val f_is_ignored : Pname.t -> bool
-(** Checkes whether a given function is ignored. *)
+(** Checks whether a given function is ignored. *)

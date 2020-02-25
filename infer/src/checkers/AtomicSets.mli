@@ -4,8 +4,8 @@
 open! IStd
 
 val analyse_procedure : Callbacks.proc_callback_args -> Summary.t
-(** Atomic sets detection entry point. Produces a summary for a given function.
-    Should be invoked for each function in the analysed program. *)
+(** An atomic sets detection entry point. Produces a summary for a given
+    function. Should be invoked for each function in the analysed program. *)
 
 val print_atomic_sets : Callbacks.cluster_callback_args -> unit
 (** Should be invoked after the atomic sets detection of all functions

@@ -2285,9 +2285,9 @@ and atomic_sets_widen_limit : int ref =
     ~long:"atomic-sets-widen-limit"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
     ~meta:"int"
-    "Specify the maximum number of iterations in a widening operator in \
+    "Specify the maximum number of iterations in a widening operator in the \
      'atomic-sets' checker. Under-approximation after specified loop \
-     iterations. Default value is 5."
+     iterations. The default value is 5."
 
 
 and atomicity_violations_widen_limit : int ref =
@@ -2297,9 +2297,9 @@ and atomicity_violations_widen_limit : int ref =
     ~long:"atomicity-violations-widen-limit"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
     ~meta:"int"
-    "Specify the maximum number of iterations in a widening operator in \
+    "Specify the maximum number of iterations in a widening operator in the \
      'atomicity-violations' checker. Under-approximation after specified loop \
-     iterations. Default value is 1000."
+     iterations. The default value is 1000."
 
 
 and uninit_interproc =

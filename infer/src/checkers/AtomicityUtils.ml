@@ -19,23 +19,17 @@ let inferDir : string =
 
 let atomicSetsFile : string = inferDir ^ "/atomic-sets"
 
-(* ****************************** Strings *********************************** *)
-
-let s_eq (s1 : string) (s2 : string) : bool = phys_equal (S.compare s1 s2) 0
-
-let s_empty (s : string) : bool = s_eq s ""
-
 (* ****************************** Functions ********************************* *)
 
 let f_is_lock (f : Pname.t) : bool =
   let fString : string = Pname.to_string f in
 
-  s_eq fString "pthread_mutex_lock"
+  S.equal fString "pthread_mutex_lock"
 
 let f_is_unlock (f : Pname.t) : bool =
   let fString : string = Pname.to_string f in
 
-  s_eq fString "pthread_mutex_unlock"
+  S.equal fString "pthread_mutex_unlock"
 
 let f_is_ignored (f : Pname.t) : bool =
   let fString : string = Pname.to_string f in

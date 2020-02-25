@@ -4,21 +4,23 @@
 open! IStd
 open! AtomicityUtils
 
-module D = AtomicityViolationsDomain (* Abstract domain definition. *)
+module AccessExp = HilExp.AccessExpression
+module D = AtomicityViolationsDomain (* The abstract domain definition. *)
 module F = Format
+module L = List
 module Loc = Location
 module Pdata = ProcData
 module Pname = Typ.Procname
 
-(** Summary payload for analysed functions. *)
+(** A summary payload for analysed functions. *)
 module Payload = SummaryPayload.Make (struct
-  type t = D.summary (* Type of the payload is a domain summary. *)
+  type t = D.summary (* A type of the payload is a domain summary. *)
 
   let field : (Payloads.t, t option) Field.t =
     Payloads.Fields.atomicity_violations
 end)
 
-(** Transfer function for abstract states of an analysed function. *)
+(** A transfer function for abstract states of an analysed function. *)
 module TransferFunctions (CFG : ProcCfg.S) = struct
   module CFG = CFG
   module Domain = D
@@ -36,21 +38,38 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     | Call (
         (_ : AccessPath.base),
         (Direct (calleePname : Pname.t) : HilInstr.call),
-        (_ : HilExp.t list),
+        (actuals : HilExp.t list),
         (_ : CallFlags.t),
         (loc : Loc.t)
       ) ->
       if f_is_ignored calleePname then astate
       else
       (
-        let calleePnameString : string = Pname.to_string calleePname in
+        let lockPath : AccessPath.t =
+          match L.hd actuals with
+          | Some (exp : HilExp.t) ->
+            ( match L.hd (HilExp.get_access_exprs exp) with
+             | Some (accessExp : AccessExp.t) ->
+               AccessExp.to_access_path accessExp
+
+             | None ->
+               Logging.(die InternalError)
+                "Failed to find an access path of the lock '%a' called from \
+                 '%a'."
+                HilExp.pp exp Pname.pp calleePname
+            )
+
+          | None -> (Var.of_id (Ident.create_none ()), Typ.void), []
+        in
 
         (* let astate : D.t = *)
-        if f_is_lock calleePname then D.update_astate_on_lock astate
-        else if f_is_unlock calleePname then D.update_astate_on_unlock astate
+        if f_is_lock calleePname then D.update_astate_on_lock astate lockPath
+        else if f_is_unlock calleePname then
+          D.update_astate_on_unlock astate lockPath
         else
           let astate : D.t =
-            D.update_astate_on_function_call astate calleePnameString loc
+            D.update_astate_on_function_call
+              astate (Pname.to_string calleePname) loc
           in
 
           (* Update the abstract state with the function summary as well if it
@@ -67,8 +86,8 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
 
         (* F.fprintf
           F.std_formatter
-          "\n\nFunction: %s\n%a\n\n"
-          calleePnameString D.pp astate; *)
+          "\n\nFunction: %a\n%a\n\n"
+          Pname.pp calleePname D.pp astate; *)
 
         (* astate *)
       )
@@ -79,7 +98,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     F.pp_print_string fmt "AtomicityViolations"
 end
 
-(** Analyser definition. *)
+(** An analyser definition. *)
 module Analyser =
   LowerHil.MakeAbstractInterpreter (TransferFunctions (ProcCfg.Normal))
 
@@ -91,13 +110,12 @@ let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
   if f_is_ignored pName then args.summary
   else
   (
-    let pNameString : string = Pname.to_string pName
-    and tenv : Tenv.t = Exe_env.get_tenv args.exe_env pName in
+    let procData : Pdata.no_extras Pdata.t =
+      Pdata.make_default args.summary (Exe_env.get_tenv args.exe_env pName)
+    in
 
     (* Compute the abstract state for a given function. *)
-    match Analyser.compute_post
-      (Pdata.make_default args.summary tenv) ~initial:D.initial
-    with
+    match Analyser.compute_post procData ~initial:D.initial with
     | Some (post : D.t) ->
       (* Convert the abstract state to the function summary. *)
       let convertedSummary : D.summary = D.convert_astate_to_summary post in
@@ -107,8 +125,8 @@ let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
       and _ : string = F.flush_str_formatter () in
       F.fprintf
         fmt
-        "\n\nFunction: %s\n%a%a\n\n"
-        pNameString D.pp post D.pp_summary convertedSummary;
+        "\n\nFunction: %a\n%a%a\n\n"
+        Pname.pp pName D.pp post D.pp_summary convertedSummary;
       Logging.(debug Capture Verbose) "%s" (F.flush_str_formatter ());
 
       (* Report atomicity violations. *)
@@ -121,6 +139,7 @@ let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
 
     | None ->
       Logging.(die InternalError)
-        "Detection of atomicity violations failed to compute a post for '%s'."
-        pNameString
+        "The detection of atomicity violations failed to compute a post for \
+         '%a'."
+        Pname.pp pName
   )
