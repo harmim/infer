@@ -331,12 +331,7 @@ let update_astate_on_lock (astate : t) (lockPath : AccessPath.t) : t =
         (emptyAtomicPair, lockPath) astateEl.lockedLastPairs
     in
 
-    if AtomicPairWithPathSet.is_empty astateEl.lockedLastPairs then
-      { astateEl with
-        lastPair= emptyAtomicPair
-      ; nestedLastCalls= SSet.empty
-      ; lockedLastPairs= lockedLastPairs }
-    else {astateEl with lockedLastPairs= lockedLastPairs}
+    {astateEl with lockedLastPairs= lockedLastPairs}
   in
   TSet.map mapper astate
 
@@ -350,12 +345,7 @@ let update_astate_on_unlock (astate : t) (lockPath : AccessPath.t) : t =
       AtomicPairWithPathSet.filter filter astateEl.lockedLastPairs
     in
 
-    if AtomicPairWithPathSet.is_empty lockedLastPairs then
-      { astateEl with
-        lastPair= emptyAtomicPair
-      ; nestedLastCalls= SSet.empty
-      ; lockedLastPairs= lockedLastPairs }
-    else {astateEl with lockedLastPairs= lockedLastPairs}
+    {astateEl with lockedLastPairs= lockedLastPairs}
   in
   TSet.map mapper astate
 
