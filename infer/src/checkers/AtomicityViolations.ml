@@ -4,7 +4,6 @@
 open! IStd
 open! AtomicityUtils
 
-module AccessExp = HilExp.AccessExpression
 module D = AtomicityViolationsDomain (* The abstract domain definition. *)
 module F = Format
 module L = List
@@ -34,6 +33,14 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     (instr : HilInstr.t)
     : D.t =
     match instr with
+    Call (
+      (_ : AccessPath.base),
+      (Direct (calleePname : Pname.t) : HilInstr.call),
+      (_ : HilExp.t list),
+      (_ : CallFlags.t),
+      (_ : Loc.t)
+    ) when f_is_ignored calleePname ~ignoreCall:true -> astate
+
     (* Update the abstract state on function calls. *)
     | Call (
         (_ : AccessPath.base),
@@ -42,31 +49,41 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
         (_ : CallFlags.t),
         (loc : Loc.t)
       ) ->
-      if f_is_ignored calleePname then astate
-      else
-      (
-        let lockPath : AccessPath.t =
-          match L.hd actuals with
-          | Some (exp : HilExp.t) ->
-            ( match L.hd (HilExp.get_access_exprs exp) with
-             | Some (accessExp : AccessExp.t) ->
-               AccessExp.to_access_path accessExp
+      let update_astate_with_locks
+        (astate : D.t)
+        (f : (D.t -> AccessPath.t option -> D.t))
+        (locks : HilExp.t list)
+        : D.t =
+        let astate : D.t ref = ref astate in
 
-             | None ->
-               Logging.(die InternalError)
-                "Failed to find an access path of the lock '%a' called from \
-                 '%a'."
-                HilExp.pp exp Pname.pp calleePname
-            )
+        L.iter locks ~f:( fun (lock : HilExp.t) : unit ->
+          astate := f !astate (get_lock_path lock) );
 
-          | None -> (Var.of_id (Ident.create_none ()), Typ.void), []
-        in
+        !astate
+      in
 
-        (* let astate : D.t = *)
-        if f_is_lock calleePname then D.update_astate_on_lock astate lockPath
-        else if f_is_unlock calleePname then
-          D.update_astate_on_unlock astate lockPath
-        else
+      (* let astate : D.t = *)
+      ( match ConcurrencyModels.get_lock_effect calleePname actuals with
+        (* lock *)
+        Lock (locks : HilExp.t list) ->
+          update_astate_with_locks astate D.update_astate_on_lock locks
+        | GuardConstruct {guard= guard; acquire_now= true}
+        | GuardLock (guard : HilExp.t) ->
+          D.update_astate_on_lock astate (get_lock_path guard)
+
+        (* unlock *)
+        | Unlock (locks : HilExp.t list) ->
+          update_astate_with_locks astate D.update_astate_on_unlock locks
+        | GuardUnlock (guard : HilExp.t)
+        | GuardDestroy (guard : HilExp.t) ->
+          D.update_astate_on_unlock astate (get_lock_path guard)
+
+        (* TODO: try lock *)
+        | LockedIfTrue (_ : HilExp.t list) -> astate
+        | GuardLockedIfTrue (_ : HilExp.t) -> astate
+
+        (* function call *)
+        | NoEffect ->
           let astate : D.t =
             D.update_astate_on_function_call
               astate (Pname.to_string calleePname) loc
@@ -77,20 +94,22 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
           ( match Payload.read
               ~caller_summary:pData.summary ~callee_pname:calleePname
             with
-            | Some (summary : D.summary) ->
+            Some (summary : D.summary) ->
               D.update_astate_on_function_call_with_summary astate summary loc
 
             | None -> astate
           )
-        (* in *)
 
-        (* F.fprintf
-          F.std_formatter
-          "\n\nFunction: %a\n%a\n\n"
-          Pname.pp calleePname D.pp astate; *)
-
-        (* astate *)
+        | _ -> astate
       )
+      (* in *)
+
+      (* F.fprintf
+        F.std_formatter
+        "\n\nFunction: %a\n%a\n\n"
+        Pname.pp calleePname D.pp astate; *)
+
+      (* astate *)
 
     | _ -> astate
 
@@ -104,19 +123,21 @@ module Analyser =
 
 let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
   D.initialise true; (* Domain initialisation. *)
-
   let pName : Pname.t = Summary.get_proc_name args.summary in
 
   if f_is_ignored pName then args.summary
-  else
-  (
+  else (
     let procData : Pdata.no_extras Pdata.t =
       Pdata.make_default args.summary (Exe_env.get_tenv args.exe_env pName)
+    and initialPost : D.t =
+      if Procdesc.is_java_synchronized args.summary.proc_desc then
+        D.update_astate_on_lock D.initial None
+      else D.initial
     in
 
     (* Compute the abstract state for a given function. *)
-    match Analyser.compute_post procData ~initial:D.initial with
-    | Some (post : D.t) ->
+    match Analyser.compute_post procData ~initial:initialPost with
+    Some (post : D.t) ->
       (* Convert the abstract state to the function summary. *)
       let convertedSummary : D.summary = D.convert_astate_to_summary post in
 

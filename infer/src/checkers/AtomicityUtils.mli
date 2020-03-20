@@ -4,11 +4,12 @@
 open! IStd
 
 module Pname = Typ.Procname
+module S = String
 module Set = Caml.Set
 
 (* ****************************** Modules *********************************** *)
 
-module SSet : module type of Set.Make (String)
+module SSet : module type of Set.Make (S)
 (** A set of strings. *)
 
 (* ****************************** Constants ********************************* *)
@@ -21,11 +22,11 @@ val atomicSetsFile : string
 
 (* ****************************** Functions ********************************* *)
 
-val f_is_lock : Pname.t -> bool
-(** Checks whether a given function is a lock. *)
+val str_contains : string -> string -> bool
+(** Checks whether the second string is a substring of the first string. *)
 
-val f_is_unlock : Pname.t -> bool
-(** Checks whether a given function is an unlock. *)
-
-val f_is_ignored : Pname.t -> bool
+val f_is_ignored : ?ignoreCall:bool -> Pname.t -> bool
 (** Checks whether a given function is ignored. *)
+
+val get_lock_path : HilExp.t -> AccessPath.t option
+(** Returns an access path of a given expression. *)

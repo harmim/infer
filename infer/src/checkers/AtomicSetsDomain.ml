@@ -6,6 +6,7 @@ open! AtomicityUtils
 
 module F = Format
 module OC = Out_channel
+module Opt = Option
 module P = Pervasives
 module S = String
 module Set = Caml.Set
@@ -17,7 +18,7 @@ module Set = Caml.Set
 type callsPair = SSet.t * SSet.t
 
 (** A pair of sets of calls with an access path. *)
-type callsPairWithPath = callsPair * AccessPath.t
+type callsPairWithPath = callsPair * AccessPath.t option
 
 (* ****************************** Functions ********************************* *)
 
@@ -45,10 +46,10 @@ module CallsPairWithPathSet = Set.Make (struct
   type t = callsPairWithPath
 
   let compare
-    ((p1 : callsPair), (path1 : AccessPath.t) : t)
-    ((p2 : callsPair), (path2 : AccessPath.t) : t)
+    ((p1 : callsPair), (path1 : AccessPath.t option) : t)
+    ((p2 : callsPair), (path2 : AccessPath.t option) : t)
     : int =
-    if calls_pairs_eq p1 p2 && AccessPath.equal path1 path2 then 0
+    if calls_pairs_eq p1 p2 && Opt.equal AccessPath.equal path1 path2 then 0
     else if P.compare p1 p2 > 0 then 1
     else -1
 end)
@@ -92,43 +93,43 @@ let pp (fmt : F.formatter) (astate : t) : unit =
     F.fprintf fmt "{%s};\n" (S.concat (SSet.elements astateEl.calls) ~sep:", ");
 
     (* callsPairs *)
-    let lastCallsPairOption : callsPairWithPath option =
+    let lastCallsPair : callsPairWithPath option =
       CallsPairWithPathSet.max_elt_opt astateEl.callsPairs
     in
     let print_calls_pair
       ( ((pFst : SSet.t), (pSnd : SSet.t) : callsPair)
-      , (path : AccessPath.t) : callsPairWithPath )
+      , (path : AccessPath.t option) as callsPair : callsPairWithPath )
       : unit =
       let withoutLock : string = S.concat (SSet.elements pFst) ~sep:", "
       and withLock : string = S.concat (SSet.elements pSnd) ~sep:", " in
-      F.fprintf fmt "%a: {%s} ( {%s} )" AccessPath.pp path withoutLock withLock;
+      ( match path with
+        Some (path : AccessPath.t) ->
+          F.fprintf
+            fmt
+            "%a: {%s} ( {%s} )"
+            AccessPath.pp path withoutLock withLock
 
-      match lastCallsPairOption with
-      | Some (lastCallsPair : callsPairWithPath) ->
-        if not (phys_equal ((pFst, pSnd), path) lastCallsPair) then
-          F.pp_print_string fmt " | "
+        | None -> F.fprintf fmt "{%s} ( {%s} )" withoutLock withLock
+      );
 
-      | None -> ()
+      if not (phys_equal callsPair (Opt.value_exn lastCallsPair)) then
+        F.pp_print_string fmt " | "
     in
     CallsPairWithPathSet.iter print_calls_pair astateEl.callsPairs;
     F.pp_print_string fmt ";\n";
 
     (* finalCallsPairs *)
-    let lastFinalCallsPairOption : callsPair option =
+    let lastFinalCallsPair : callsPair option =
       CallsPairSet.max_elt_opt astateEl.finalCallsPairs
     in
     let print_final_calls_pair
-      ((pFst : SSet.t), (pSnd : SSet.t) : callsPair) : unit =
+      ((pFst : SSet.t), (pSnd : SSet.t) as callsPair : callsPair) : unit =
       let withoutLock : string = S.concat (SSet.elements pFst) ~sep:", "
       and withLock : string = S.concat (SSet.elements pSnd) ~sep:", " in
       F.fprintf fmt "{%s} ( {%s} )" withoutLock withLock;
 
-      match lastFinalCallsPairOption with
-      | Some (lastFinalCallsPair : callsPair) ->
-        if not (phys_equal (pFst, pSnd) lastFinalCallsPair) then
-          F.pp_print_string fmt " | "
-
-      | None -> ()
+      if not (phys_equal callsPair (Opt.value_exn lastFinalCallsPair)) then
+        F.pp_print_string fmt " | "
     in
     CallsPairSet.iter print_final_calls_pair astateEl.finalCallsPairs;
     F.pp_print_string fmt ";\n";
@@ -145,7 +146,7 @@ let update_astate_on_function_call (astate : t) (f : string) : t =
       and callsPairs : CallsPairWithPathSet.t =
         let mapper
           ( ((pFst : SSet.t), (pSnd : SSet.t) : callsPair)
-          , (path : AccessPath.t) : callsPairWithPath )
+          , (path : AccessPath.t option) : callsPairWithPath )
           : callsPairWithPath =
           (pFst, SSet.add f pSnd), path
         in
@@ -157,7 +158,7 @@ let update_astate_on_function_call (astate : t) (f : string) : t =
   in
   TSet.map mapper astate
 
-let update_astate_on_lock (astate : t) (lockPath : AccessPath.t) : t =
+let update_astate_on_lock (astate : t) (lockPath : AccessPath.t option) : t =
   let mapper (astateEl : tElement) : tElement =
     let callsPairs : CallsPairWithPathSet.t =
       CallsPairWithPathSet.add
@@ -169,14 +170,14 @@ let update_astate_on_lock (astate : t) (lockPath : AccessPath.t) : t =
   in
   TSet.map mapper astate
 
-let update_astate_on_unlock (astate : t) (lockPath : AccessPath.t) : t =
+let update_astate_on_unlock (astate : t) (lockPath : AccessPath.t option) : t =
   let mapper (astateEl : tElement) : tElement =
     let finalCallsPairs : CallsPairSet.t ref = ref astateEl.finalCallsPairs in
     let callsPairs : CallsPairWithPathSet.t =
       let filter
-        ((p : callsPair), (path : AccessPath.t) : callsPairWithPath) : bool =
-        if AccessPath.equal path lockPath then
-        (
+        ((p : callsPair), (path : AccessPath.t option) : callsPairWithPath)
+        : bool =
+        if Opt.equal AccessPath.equal path lockPath then (
           finalCallsPairs := CallsPairSet.add p !finalCallsPairs;
 
           false
@@ -198,7 +199,7 @@ let update_astate_at_the_end_of_function (astate : t) : t =
     let finalCallsPairs : CallsPairSet.t ref = ref astateEl.finalCallsPairs in
 
     let iterator
-      ((p : callsPair), (_ : AccessPath.t) : callsPairWithPath) : unit =
+      ((p : callsPair), (_ : AccessPath.t option) : callsPairWithPath) : unit =
       finalCallsPairs := CallsPairSet.add p !finalCallsPairs
     in
     CallsPairWithPathSet.iter iterator astateEl.callsPairs;
@@ -220,18 +221,14 @@ type summary = {atomicFunctions: SSSet.t; allOccurrences: SSet.t}
 
 let pp_summary (fmt : F.formatter) (summary : summary) : unit =
   (* atomicFunctions *)
-  let lastAtomicFunctionsOption : SSet.t option =
+  let lastAtomicFunctions : SSet.t option =
     SSSet.max_elt_opt summary.atomicFunctions
   in
   let print_atomic_functions (atomicFunctions : SSet.t) : unit =
     F.fprintf fmt "{%s}" (S.concat (SSet.elements atomicFunctions) ~sep:", ");
 
-    match lastAtomicFunctionsOption with
-    | Some (lastAtomicFunctions : SSet.t) ->
-      if not (phys_equal atomicFunctions lastAtomicFunctions) then
-        F.pp_print_string fmt " "
-
-    | None -> ()
+    if not (phys_equal atomicFunctions (Opt.value_exn lastAtomicFunctions)) then
+      F.pp_print_string fmt " "
   in
   F.pp_print_string fmt "atomicFunctions: ";
   SSSet.iter print_atomic_functions summary.atomicFunctions;
@@ -254,7 +251,7 @@ let update_astate_on_function_call_with_summary
       and callsPairs : CallsPairWithPathSet.t =
         let mapper
           ( ((pFst : SSet.t), (pSnd : SSet.t) : callsPair)
-          , (path : AccessPath.t) : callsPairWithPath )
+          , (path : AccessPath.t option) : callsPairWithPath )
           : callsPairWithPath =
           (pFst, SSet.union pSnd summary.allOccurrences), path
         in
@@ -288,18 +285,14 @@ let convert_astate_to_summary (astate : t) : summary =
 let print_atomic_sets (oc : OC.t) (f : string) (summary : summary) : unit =
   OC.fprintf oc "%s: " f;
 
-  let lastAtomicFunctionsOption : SSet.t option =
+  let lastAtomicFunctions : SSet.t option =
     SSSet.max_elt_opt summary.atomicFunctions
   in
   let print_atomic_functions (atomicFunctions : SSet.t) : unit =
     OC.fprintf oc "{%s}" (S.concat (SSet.elements atomicFunctions) ~sep:", ");
 
-    match lastAtomicFunctionsOption with
-    | Some (lastAtomicFunctions : SSet.t) ->
-      if not (phys_equal atomicFunctions lastAtomicFunctions) then
-        OC.output_string oc " "
-
-    | None -> ()
+    if not (phys_equal atomicFunctions (Opt.value_exn lastAtomicFunctions)) then
+      OC.output_string oc " "
   in
   SSSet.iter print_atomic_functions summary.atomicFunctions;
 

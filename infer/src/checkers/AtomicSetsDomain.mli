@@ -20,10 +20,10 @@ val pp : F.formatter -> t -> unit
 val update_astate_on_function_call : t -> string -> t
 (** Updates an abstract state on a function call. *)
 
-val update_astate_on_lock : t -> AccessPath.t -> t
+val update_astate_on_lock : t -> AccessPath.t option -> t
 (** Updates an abstract state on a lock call. *)
 
-val update_astate_on_unlock : t -> AccessPath.t -> t
+val update_astate_on_unlock : t -> AccessPath.t option -> t
 (** Updates an abstract state on an unlock call. *)
 
 val update_astate_at_the_end_of_function : t -> t

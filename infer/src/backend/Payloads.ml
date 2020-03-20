@@ -83,5 +83,5 @@ let empty =
   ; starvation= None
   ; nullsafe= None
   ; uninit= None
-  ; atomic_sets: AtomicSetsDomain.summary option= None
-  ; atomicity_violations: AtomicityViolationsDomain.summary option= None }
+  ; atomic_sets= None
+  ; atomicity_violations= None }
