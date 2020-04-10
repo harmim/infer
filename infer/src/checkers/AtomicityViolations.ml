@@ -7,9 +7,6 @@ open! AtomicityUtils
 module D = AtomicityViolationsDomain (* The abstract domain definition. *)
 module F = Format
 module L = List
-module Loc = Location
-module Pdata = ProcData
-module Pname = Typ.Procname
 
 (** A summary payload for analysed functions. *)
 module Payload = SummaryPayload.Make (struct
@@ -24,30 +21,30 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
   module CFG = CFG
   module Domain = D
 
-  type extras = Pdata.no_extras (* No extras needed. *)
+  type extras = ProcData.no_extras (* No extras needed. *)
 
   let exec_instr
     (astate : D.t)
-    (pData : extras Pdata.t)
+    (pData : extras ProcData.t)
     (_ : CFG.Node.t)
     (instr : HilInstr.t)
     : D.t =
     match instr with
     Call (
       (_ : AccessPath.base),
-      (Direct (calleePname : Pname.t) : HilInstr.call),
+      (Direct (calleePname : Procname.t) : HilInstr.call),
       (_ : HilExp.t list),
       (_ : CallFlags.t),
-      (_ : Loc.t)
+      (_ : Location.t)
     ) when f_is_ignored calleePname ~ignoreCall:true -> astate
 
     (* Update the abstract state on function calls. *)
     | Call (
         (_ : AccessPath.base),
-        (Direct (calleePname : Pname.t) : HilInstr.call),
+        (Direct (calleePname : Procname.t) : HilInstr.call),
         (actuals : HilExp.t list),
         (_ : CallFlags.t),
-        (loc : Loc.t)
+        (loc : Location.t)
       ) ->
       let update_astate_with_locks
         (astate : D.t)
@@ -69,14 +66,14 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
           update_astate_with_locks astate D.update_astate_on_lock locks
         | GuardConstruct {guard= guard; acquire_now= true}
         | GuardLock (guard : HilExp.t) ->
-          D.update_astate_on_lock astate (get_lock_path guard)
+          update_astate_with_locks astate D.update_astate_on_lock [guard]
 
         (* unlock *)
         | Unlock (locks : HilExp.t list) ->
           update_astate_with_locks astate D.update_astate_on_unlock locks
         | GuardUnlock (guard : HilExp.t)
         | GuardDestroy (guard : HilExp.t) ->
-          D.update_astate_on_unlock astate (get_lock_path guard)
+          update_astate_with_locks astate D.update_astate_on_unlock [guard]
 
         (* TODO: try lock *)
         | LockedIfTrue (_ : HilExp.t list) -> astate
@@ -86,7 +83,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
         | NoEffect ->
           let astate : D.t =
             D.update_astate_on_function_call
-              astate (Pname.to_string calleePname) loc
+              astate (Procname.to_string calleePname) loc
           in
 
           (* Update the abstract state with the function summary as well if it
@@ -107,7 +104,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
       (* F.fprintf
         F.std_formatter
         "\n\nFunction: %a\n%a\n\n"
-        Pname.pp calleePname D.pp astate; *)
+        Procname.pp calleePname D.pp astate; *)
 
       (* astate *)
 
@@ -123,12 +120,12 @@ module Analyser =
 
 let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
   D.initialise true; (* Domain initialisation. *)
-  let pName : Pname.t = Summary.get_proc_name args.summary in
+  let pName : Procname.t = Summary.get_proc_name args.summary in
 
   if f_is_ignored pName then args.summary
   else (
-    let procData : Pdata.no_extras Pdata.t =
-      Pdata.make_default args.summary (Exe_env.get_tenv args.exe_env pName)
+    let procData : ProcData.no_extras ProcData.t =
+      ProcData.make_default args.summary (Exe_env.get_tenv args.exe_env pName)
     and initialPost : D.t =
       if Procdesc.is_java_synchronized args.summary.proc_desc then
         D.update_astate_on_lock D.initial None
@@ -147,12 +144,12 @@ let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
       F.fprintf
         fmt
         "\n\nFunction: %a\n%a%a\n\n"
-        Pname.pp pName D.pp post D.pp_summary convertedSummary;
+        Procname.pp pName D.pp post D.pp_summary convertedSummary;
       Logging.(debug Capture Verbose) "%s" (F.flush_str_formatter ());
 
       (* Report atomicity violations. *)
       D.report_atomicity_violations
-        post ( fun (loc : Loc.t) (msg : string) : unit ->
+        post ( fun (loc : Location.t) (msg : string) : unit ->
           Reporting.log_error
             args.summary ~loc:loc IssueType.atomicity_violation msg );
 
@@ -162,5 +159,5 @@ let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
       Logging.(die InternalError)
         "The detection of atomicity violations failed to compute a post for \
          '%a'."
-        Pname.pp pName
+        Procname.pp pName
   )

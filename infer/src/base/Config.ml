@@ -2281,7 +2281,7 @@ and type_size =
 and atomic_sets_widen_limit : int ref =
   CLOpt.mk_int
     ~default:5
-    ~default_to_string:(fun (i : int) : string -> Pervasives.string_of_int i)
+    ~default_to_string:string_of_int
     ~long:"atomic-sets-widen-limit"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
     ~meta:"int"
@@ -2293,7 +2293,7 @@ and atomic_sets_widen_limit : int ref =
 and atomicity_violations_widen_limit : int ref =
   CLOpt.mk_int
     ~default:1000
-    ~default_to_string:(fun (i : int) : string -> Pervasives.string_of_int i)
+    ~default_to_string:string_of_int
     ~long:"atomicity-violations-widen-limit"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
     ~meta:"int"
@@ -3105,6 +3105,8 @@ and tv_limit_filtered = !tv_limit_filtered
 and type_size = !type_size
 
 and uninit_interproc = !uninit_interproc
+
+and atomic_sets_issues_dir_name : string = "atomic_sets_issues"
 
 and atomic_sets_widen_limit : int = !atomic_sets_widen_limit
 

@@ -151,21 +151,22 @@ let all_checkers =
   ; { name= "Self captured in block checker"
     ; active= Config.is_checker_enabled SelfInBlock
     ; callbacks= [(Procedure SelfInBlock.checker, Language.Clang)] }
-  ; ( { name= "Atomicity violations analysis - detection of atomic sets"
-      ; active= Config.is_checker_enabled AtomicSets
-      ; callbacks=
-        [ (Procedure AtomicSets.analyse_procedure, Clang)
-        ; (Procedure AtomicSets.analyse_procedure, Java)
-        ; (Cluster AtomicSets.print_atomic_sets, Clang)
-        ; (Cluster AtomicSets.print_atomic_sets, Java) ] }
-    : checker )
-  ; ( { name=
-          "Atomicity violations analysis - detection of atomicity violations"
-      ; active= Config.is_checker_enabled AtomicityViolations
-      ; callbacks=
-        [ (Procedure AtomicityViolations.analyse_procedure, Clang)
-        ; (Procedure AtomicityViolations.analyse_procedure, Java) ] }
-    : checker ) ]
+  ; { name= "Atomicity violations analysis - detection of atomic sets"
+    ; active= Config.is_checker_enabled AtomicSets
+    ; callbacks=
+      [ (Procedure AtomicSets.analyse_procedure, Clang)
+      ; (Procedure AtomicSets.analyse_procedure, Java)
+      ; ( File { callback= AtomicSets.print_atomic_sets
+               ; issue_dir= Config.atomic_sets_issues_dir_name }
+        , Clang )
+      ; ( File { callback= AtomicSets.print_atomic_sets
+               ; issue_dir= Config.atomic_sets_issues_dir_name }
+        , Java ) ] }
+  ; { name= "Atomicity violations analysis - detection of atomicity violations"
+    ; active= Config.is_checker_enabled AtomicityViolations
+    ; callbacks=
+      [ (Procedure AtomicityViolations.analyse_procedure, Clang)
+      ; (Procedure AtomicityViolations.analyse_procedure, Java) ] } ]
 
 let get_active_checkers () =
   let filter_checker {active} = active in

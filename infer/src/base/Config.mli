@@ -642,6 +642,8 @@ val type_size : bool
 
 val uninit_interproc : bool
 
+val atomic_sets_issues_dir_name : string
+
 val atomic_sets_widen_limit : int
 
 val atomicity_violations_widen_limit : int
@@ -659,7 +661,6 @@ val write_html_whitelist_regex : string list
 val xcode_developer_dir : string option
 
 val xcpretty : bool
-(** {2 Global variables with initial values specified by command-line options} *)
 
 (** {2 Configuration values derived from command-line options} *)
 

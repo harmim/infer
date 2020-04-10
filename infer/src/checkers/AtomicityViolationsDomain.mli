@@ -4,7 +4,6 @@
 open! IStd
 
 module F = Format
-module Loc = Location
 
 (* ****************************** Initialisation **************************** *)
 
@@ -22,7 +21,7 @@ val initial : t
 val pp : F.formatter -> t -> unit
 (** A pretty printer of an abstract state. *)
 
-val update_astate_on_function_call : t -> string -> Loc.t -> t
+val update_astate_on_function_call : t -> string -> Location.t -> t
 (** Updates an abstract state on a function call. *)
 
 val update_astate_on_lock : t -> AccessPath.t option -> t
@@ -39,19 +38,20 @@ type summary
 val pp_summary : F.formatter -> summary -> unit
 (** A pretty printer of a summary. *)
 
-val update_astate_on_function_call_with_summary : t -> summary -> Loc.t -> t
+val update_astate_on_function_call_with_summary :
+  t -> summary -> Location.t -> t
 (** Updates an abstract state on a function call with its summary. *)
 
 val convert_astate_to_summary : t -> summary
 (** Converts an abstract state to a summary. *)
 
-val report_atomicity_violations : t -> (Loc.t -> string -> unit) -> unit
+val report_atomicity_violations : t -> (Location.t -> string -> unit) -> unit
 (** Reports atomicity violations from an abstract state using reporting
     function. *)
 
 (* ****************************** Operators ********************************* *)
 
-val ( <= ) : lhs:t -> rhs:t -> bool
+val leq : lhs:t -> rhs:t -> bool
 (** A comparison operator of abstract states. *)
 
 val join : t -> t -> t

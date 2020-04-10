@@ -3,7 +3,6 @@
 
 open! IStd
 
-module Pname = Typ.Procname
 module S = String
 module Set = Caml.Set
 
@@ -25,7 +24,7 @@ val atomicSetsFile : string
 val str_contains : string -> string -> bool
 (** Checks whether the second string is a substring of the first string. *)
 
-val f_is_ignored : ?ignoreCall:bool -> Pname.t -> bool
+val f_is_ignored : ?ignoreCall:bool -> Procname.t -> bool
 (** Checks whether a given function is ignored. *)
 
 val get_lock_path : HilExp.t -> AccessPath.t option

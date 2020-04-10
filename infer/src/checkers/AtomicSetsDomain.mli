@@ -4,7 +4,6 @@
 open! IStd
 
 module F = Format
-module OC = Out_channel
 
 (* ****************************** Astate ************************************ *)
 
@@ -43,13 +42,13 @@ val update_astate_on_function_call_with_summary : t -> summary -> t
 val convert_astate_to_summary : t -> summary
 (** Converts an abstract state to a summary. *)
 
-val print_atomic_sets : OC.t -> string -> summary -> unit
+val print_atomic_sets : Out_channel.t -> string -> summary -> unit
 (** Prints atomic sets from a given summary and a function name to a given
     output channel. *)
 
 (* ****************************** Operators ********************************* *)
 
-val ( <= ) : lhs:t -> rhs:t -> bool
+val leq : lhs:t -> rhs:t -> bool
 (** A comparison operator of abstract states. *)
 
 val join : t -> t -> t

@@ -532,10 +532,6 @@ let atomicity_violation =
     ~enabled:true ~hum:"Atomicity Violation" "ATOMICITY_VIOLATION"
 
 
-let atomicity_violation : t =
-  register_from_string
-    ~enabled:true ~hum:"Atomicity Violation" "ATOMICITY_VIOLATION"
-
 (* register enabled cost issues *)
 let () =
   List.iter CostKind.enabled_cost_kinds ~f:(fun CostKind.{kind} ->

@@ -3,7 +3,7 @@
 
 open! IStd
 
-val analyse_procedure : Callbacks.proc_callback_args -> Summary.t
+val analyse_procedure : Callbacks.proc_callback_t
 (** An atomicity violations detection entry point. Produces a summary for
     a given function. Should be invoked for each function in the analysed
     program. Reports atomicity violations. *)
