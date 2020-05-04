@@ -122,6 +122,11 @@ OPTIONS
            the 'atomic-sets' checker. Under-approximation after specified
            loop iterations. The default value is 5.           See also infer-analyze(1).
 
+       --atomicity-ignored-functions file
+           Specify a file with function names that should be ignored during
+           the analysis of 'atomic-sets' and 'atomicity-violations' checkers.       
+    See also infer-analyze(1).
+
        --atomicity-violations
            Activates: atomicity violations analysis - detection of atomicity
            violations (Conversely: --no-atomicity-violations)           See also infer-analyze(1).
@@ -1176,6 +1181,9 @@ INTERNAL OPTIONS
            - 2 = assumes that all heap dereferences via array indexing and
            pointer arithmetic are correct
            
+
+       --atomicity-ignored-functions-reset
+           Cancel the effect of --atomicity-ignored-functions.
 
        --backtrack-level int
            Maximum level of backtracking to convert an absolute path to path

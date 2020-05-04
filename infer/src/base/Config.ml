@@ -2302,6 +2302,15 @@ and atomicity_violations_widen_limit : int ref =
      iterations. The default value is 1000."
 
 
+and atomicity_ignored_functions_file : string option ref =
+  CLOpt.mk_path_opt
+    ~long:"atomicity-ignored-functions"
+    ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
+    ~meta:"file"
+    "Specify a file with function names that should be ignored during the \
+     analysis of 'atomic-sets' and 'atomicity-violations' checkers."
+
+
 and uninit_interproc =
   CLOpt.mk_bool ~long:"uninit-interproc" "Run uninit check in the experimental interprocedural mode"
 
@@ -3111,6 +3120,9 @@ and atomic_sets_issues_dir_name : string = "atomic_sets_issues"
 and atomic_sets_widen_limit : int = !atomic_sets_widen_limit
 
 and atomicity_violations_widen_limit : int = !atomicity_violations_widen_limit
+
+and atomicity_ignored_functions_file : string option =
+  !atomicity_ignored_functions_file
 
 and unsafe_malloc = !unsafe_malloc
 
