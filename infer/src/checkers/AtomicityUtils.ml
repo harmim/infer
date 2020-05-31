@@ -32,7 +32,7 @@ let ignoredFunctions : ignoredFunctions ref =
 
 (** The initialisation of a structure that holds functions that should
     be ingored *)
-let initialiseIgnoredFunctions (_ : bool) : unit =
+let initialiseIgnoredFunctions (_ : unit) : unit =
   if not !ignoredFunctions.initialised then (
     let names : SSet.t ref = ref SSet.empty in
 
@@ -60,10 +60,11 @@ let initialiseIgnoredFunctions (_ : bool) : unit =
   )
 
 let f_is_ignored ?(ignoreCall : bool = false) (f : Procname.t) : bool =
-  initialiseIgnoredFunctions true;
+  initialiseIgnoredFunctions ();
   let fString : string = Procname.to_string f in
 
-  SSet.mem fString !ignoredFunctions.names || (
+  Procname.is_constructor f
+  || SSet.mem fString !ignoredFunctions.names || (
     str_contains fString "__" && (
       str_contains fString Config.clang_inner_destructor_prefix
       || str_contains fString Config.clang_initializer_prefix

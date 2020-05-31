@@ -116,7 +116,7 @@ let check_violating_atomicity
 
 (* ****************************** Initialisation **************************** *)
 
-let initialise (_ : bool) : unit =
+let initialise (_ : unit) : unit =
   if not !globalData.initialised then (
     (* Check existence of the input file with atomic sets. *)
     ( match Sys.file_exists atomicSetsFile with

@@ -7,7 +7,7 @@ module F = Format
 
 (* ****************************** Initialisation **************************** *)
 
-val initialise : bool -> unit
+val initialise : unit -> unit
 (** The initialisation of the abstract domain. *)
 
 (* ****************************** Astate ************************************ *)

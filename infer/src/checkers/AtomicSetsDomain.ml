@@ -269,21 +269,24 @@ let convert_astate_to_summary (astate : t) : summary =
 
 let print_atomic_sets
   (oc : Out_channel.t) (f : string) (summary : summary) : unit =
-  Out_channel.fprintf oc "%s: " f;
+  if not (SSSet.is_empty summary.atomicFunctions) then (
+    Out_channel.fprintf oc "%s: " f;
 
-  let lastAtomicFunctions : SSet.t option =
-    SSSet.max_elt_opt summary.atomicFunctions
-  in
-  let print_atomic_functions (atomicFunctions : SSet.t) : unit =
-    Out_channel.fprintf
-      oc "{%s}" (S.concat (SSet.elements atomicFunctions) ~sep:", ");
+    let lastAtomicFunctions : SSet.t option =
+      SSSet.max_elt_opt summary.atomicFunctions
+    in
+    let print_atomic_functions (atomicFunctions : SSet.t) : unit =
+      Out_channel.fprintf
+        oc "{%s}" (S.concat (SSet.elements atomicFunctions) ~sep:", ");
 
-    if not (phys_equal atomicFunctions (Opt.value_exn lastAtomicFunctions)) then
-      Out_channel.output_string oc " "
-  in
-  SSSet.iter print_atomic_functions summary.atomicFunctions;
+      if
+        not (phys_equal atomicFunctions (Opt.value_exn lastAtomicFunctions))
+      then Out_channel.output_string oc " "
+    in
+    SSSet.iter print_atomic_functions summary.atomicFunctions;
 
-  Out_channel.newline oc
+    Out_channel.newline oc
+  )
 
 (* ****************************** Operators ********************************* *)
 

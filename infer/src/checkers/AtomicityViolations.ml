@@ -119,7 +119,7 @@ module Analyser =
   LowerHil.MakeAbstractInterpreter (TransferFunctions (ProcCfg.Normal))
 
 let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
-  D.initialise true; (* Domain initialisation. *)
+  D.initialise (); (* Domain initialisation. *)
   let pName : Procname.t = Summary.get_proc_name args.summary in
 
   if f_is_ignored pName then args.summary

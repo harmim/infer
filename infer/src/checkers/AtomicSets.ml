@@ -163,7 +163,10 @@ let print_atomic_sets (args : Callbacks.file_callback_args) : IssueLog.t =
   Utils.create_dir inferDir;
 
   (* Print to a file. *)
-  let oc : Out_channel.t = Out_channel.create ~binary:false atomicSetsFile in
+  let oc : Out_channel.t =
+    Out_channel.create
+      ~binary:false ~append:true ~fail_if_exists:false atomicSetsFile
+  in
   let print_atomic_sets (pName : Procname.t) : unit =
     Opt.iter
       (Payload.read_toplevel_procedure pName)
