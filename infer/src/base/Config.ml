@@ -2311,6 +2311,16 @@ and atomicity_ignored_functions_file : string option ref =
      analysis of 'atomic-sets' and 'atomicity-violations' checkers."
 
 
+and atomicity_allowed_functions_file : string option ref =
+  CLOpt.mk_path_opt
+    ~long:"atomicity-allowed-functions"
+    ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
+    ~meta:"file"
+    "Specify a file with function names that should be allowed during the \
+     analysis of 'atomic-sets' and 'atomicity-violations' checkers. Other \
+     functions will be ignored."
+
+
 and uninit_interproc =
   CLOpt.mk_bool ~long:"uninit-interproc" "Run uninit check in the experimental interprocedural mode"
 
@@ -3123,6 +3133,9 @@ and atomicity_violations_widen_limit : int = !atomicity_violations_widen_limit
 
 and atomicity_ignored_functions_file : string option =
   !atomicity_ignored_functions_file
+
+and atomicity_allowed_functions_file : string option =
+  !atomicity_allowed_functions_file
 
 and unsafe_malloc = !unsafe_malloc
 

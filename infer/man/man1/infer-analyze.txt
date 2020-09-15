@@ -342,6 +342,11 @@ ATOMICITY VIOLATIONS CHECKER OPTIONS
            the 'atomic-sets' checker. Under-approximation after specified
            loop iterations. The default value is 5.
 
+       --atomicity-allowed-functions file
+           Specify a file with function names that should be allowed during
+           the analysis of 'atomic-sets' and 'atomicity-violations' checkers.
+           Other functions will be ignored.
+
        --atomicity-ignored-functions file
            Specify a file with function names that should be ignored during
            the analysis of 'atomic-sets' and 'atomicity-violations' checkers.

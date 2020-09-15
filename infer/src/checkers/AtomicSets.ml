@@ -36,7 +36,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
       (_ : HilExp.t list),
       (_ : CallFlags.t),
       (_ : Location.t)
-    ) when f_is_ignored calleePname ~ignoreCall:true -> astate
+    ) when f_is_ignored calleePname -> astate
 
     (* Update the abstract state on function calls. *)
     | Call (
