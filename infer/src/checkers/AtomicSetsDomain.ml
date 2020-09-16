@@ -132,6 +132,22 @@ let pp (fmt : F.formatter) (astate : t) : unit =
 
   F.pp_print_string fmt "\n"
 
+(** Modifies an element of an abstract state after addition of
+    function calls. *)
+let modify_astate_el_after_function_calls (astateEl : tElement) : tElement =
+  let finalCallsPairs : CallsPairSet.t ref = ref astateEl.finalCallsPairs in
+  let callsPairs : CallsPairWithPathSet.t =
+    let filter ((pFst, pSnd), _ : callsPairWithPath) : bool =
+      if SSet.cardinal pSnd > Config.atomic_sets_locked_functions_limit then (
+        finalCallsPairs := CallsPairSet.add (pFst, SSet.empty) !finalCallsPairs;
+        false
+      ) else true
+    in
+    CallsPairWithPathSet.filter filter astateEl.callsPairs
+  in
+
+  {astateEl with callsPairs= callsPairs; finalCallsPairs= !finalCallsPairs}
+
 let update_astate_on_function_call (astate : t) (f : string) : t =
   let mapper (astateEl : tElement) : tElement =
       let calls : SSet.t = SSet.add f astateEl.calls
@@ -143,7 +159,8 @@ let update_astate_on_function_call (astate : t) (f : string) : t =
       in
 
       (* Update the calls and the calls pairs. *)
-      {astateEl with calls= calls; callsPairs= callsPairs}
+      modify_astate_el_after_function_calls
+        {astateEl with calls= calls; callsPairs= callsPairs}
   in
   TSet.map mapper astate
 
@@ -244,7 +261,8 @@ let update_astate_on_function_call_with_summary
       in
 
       (* Update the calls and the calls pairs. *)
-      {astateEl with calls= calls; callsPairs= callsPairs}
+      modify_astate_el_after_function_calls
+        {astateEl with calls= calls; callsPairs= callsPairs}
     in
     TSet.map mapper astate
 

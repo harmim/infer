@@ -2321,6 +2321,18 @@ and atomicity_allowed_functions_file : string option ref =
      functions will be ignored."
 
 
+and atomic_sets_locked_functions_limit : int ref =
+  CLOpt.mk_int
+    ~default:20
+    ~default_to_string:string_of_int
+    ~long:"atomic-sets-locked-functions-limit"
+    ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
+    ~meta:"int"
+    "Specify the maximum number of function calls that could appear in \
+     a critical section. Critical sections with more function names will be \
+     ignored. The default value is 20."
+
+
 and uninit_interproc =
   CLOpt.mk_bool ~long:"uninit-interproc" "Run uninit check in the experimental interprocedural mode"
 
@@ -3136,6 +3148,9 @@ and atomicity_ignored_functions_file : string option =
 
 and atomicity_allowed_functions_file : string option =
   !atomicity_allowed_functions_file
+
+and atomic_sets_locked_functions_limit : int =
+  !atomic_sets_locked_functions_limit
 
 and unsafe_malloc = !unsafe_malloc
 

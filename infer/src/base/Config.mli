@@ -652,6 +652,8 @@ val atomicity_ignored_functions_file : string option
 
 val atomicity_allowed_functions_file : string option
 
+val atomic_sets_locked_functions_limit : int
+
 val unsafe_malloc : bool
 
 val worklist_mode : int

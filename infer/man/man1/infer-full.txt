@@ -113,6 +113,11 @@ OPTIONS
            Activates: atomicity violations analysis - detection of atomic
            sets (Conversely: --no-atomic-sets)           See also infer-analyze(1).
 
+       --atomic-sets-locked-functions-limit int
+           Specify the maximum number of function calls that could appear in
+           a critical section. Critical sections with more function names
+           will be ignored. The default value is 20.           See also infer-analyze(1).
+
        --atomic-sets-only
            Activates: Enable --atomic-sets and disable all other checkers
            (Conversely: --no-atomic-sets-only)           See also infer-analyze(1).

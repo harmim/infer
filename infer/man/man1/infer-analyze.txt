@@ -337,6 +337,11 @@ OPTIONS
            Activates: Enable --uninit and disable all other checkers
            (Conversely: --no-uninit-only)
 ATOMICITY VIOLATIONS CHECKER OPTIONS
+       --atomic-sets-locked-functions-limit int
+           Specify the maximum number of function calls that could appear in
+           a critical section. Critical sections with more function names
+           will be ignored. The default value is 20.
+
        --atomic-sets-widen-limit int
            Specify the maximum number of iterations in a widening operator in
            the 'atomic-sets' checker. Under-approximation after specified
