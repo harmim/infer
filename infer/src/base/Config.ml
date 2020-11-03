@@ -2302,23 +2302,42 @@ and atomicity_violations_widen_limit : int ref =
      iterations. The default value is 1000."
 
 
-and atomicity_ignored_functions_file : string option ref =
+and atomicity_ignored_function_calls_file : string option ref =
   CLOpt.mk_path_opt
-    ~long:"atomicity-ignored-functions"
+    ~long:"atomicity-ignored-function-calls"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
     ~meta:"file"
-    "Specify a file with function names that should be ignored during the \
-     analysis of 'atomic-sets' and 'atomicity-violations' checkers."
+    "Specify a file with function names whose calls should be ignored during \
+    the analysis of 'atomic-sets' and 'atomicity-violations' checkers."
 
 
-and atomicity_allowed_functions_file : string option ref =
+and atomicity_ignored_function_analyses_file : string option ref =
   CLOpt.mk_path_opt
-    ~long:"atomicity-allowed-functions"
+    ~long:"atomicity-ignored-function-analyses"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
     ~meta:"file"
-    "Specify a file with function names that should be allowed during the \
-     analysis of 'atomic-sets' and 'atomicity-violations' checkers. Other \
+    "Specify a file with function names whose analysis should be ignored \
+     during the analysis of 'atomic-sets' and 'atomicity-violations' checkers."
+
+
+and atomicity_allowed_function_calls_file : string option ref =
+  CLOpt.mk_path_opt
+    ~long:"atomicity-allowed-function-calls"
+    ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
+    ~meta:"file"
+    "Specify a file with function names whose calls should be allowed during \
+     the analysis of 'atomic-sets' and 'atomicity-violations' checkers. Other \
      functions will be ignored."
+
+
+and atomicity_allowed_function_analyses_file : string option ref =
+  CLOpt.mk_path_opt
+    ~long:"atomicity-allowed-function-analyses"
+    ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
+    ~meta:"file"
+    "Specify a file with function names whose analysis should be allowed \
+     during the analysis of 'atomic-sets' and 'atomicity-violations' checkers. \
+     Other functions will be ignored."
 
 
 and atomic_sets_locked_functions_limit : int ref =
@@ -2329,8 +2348,18 @@ and atomic_sets_locked_functions_limit : int ref =
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
     ~meta:"int"
     "Specify the maximum number of function calls that could appear in \
-     a critical section. Critical sections with more function names will be \
-     ignored. The default value is 20."
+     a critical section in the 'atomic-sets' checker. Critical sections with \
+     more function names will be ignored. The default value is 20."
+
+
+and atomic_sets_file_append : bool ref =
+  CLOpt.mk_bool
+    ~default:false
+    ~long:"atomic-sets-file-append"
+    ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
+    ~meta:"bool"
+    "Specify whether functions should be appended to the atomic sets file \
+     instead of overriding in the 'atomic-sets' checker."
 
 
 and uninit_interproc =
@@ -3143,14 +3172,22 @@ and atomic_sets_widen_limit : int = !atomic_sets_widen_limit
 
 and atomicity_violations_widen_limit : int = !atomicity_violations_widen_limit
 
-and atomicity_ignored_functions_file : string option =
-  !atomicity_ignored_functions_file
+and atomicity_ignored_function_calls_file : string option =
+  !atomicity_ignored_function_calls_file
 
-and atomicity_allowed_functions_file : string option =
-  !atomicity_allowed_functions_file
+and atomicity_ignored_function_analyses_file : string option =
+  !atomicity_ignored_function_analyses_file
+
+and atomicity_allowed_function_calls_file : string option =
+  !atomicity_allowed_function_calls_file
+
+and atomicity_allowed_function_analyses_file : string option =
+  !atomicity_allowed_function_analyses_file
 
 and atomic_sets_locked_functions_limit : int =
   !atomic_sets_locked_functions_limit
+
+and atomic_sets_file_append : bool = !atomic_sets_file_append
 
 and unsafe_malloc = !unsafe_malloc
 

@@ -33,10 +33,10 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
     Call (
       (_ : AccessPath.base),
       (Direct (calleePname : Procname.t) : HilInstr.call),
-      (_ : HilExp.t list),
+      (actuals : HilExp.t list),
       (_ : CallFlags.t),
       (_ : Location.t)
-    ) when f_is_ignored calleePname -> astate
+    ) when f_is_ignored calleePname ~actualsOpt:(Some actuals) -> astate
 
     (* Update the abstract state on function calls. *)
     | Call (
@@ -165,7 +165,10 @@ let print_atomic_sets (args : Callbacks.file_callback_args) : IssueLog.t =
   (* Print to a file. *)
   let oc : Out_channel.t =
     Out_channel.create
-      ~binary:false ~append:true ~fail_if_exists:false atomicSetsFile
+      ~binary:false
+      ~append:Config.atomic_sets_file_append
+      ~fail_if_exists:false
+      atomicSetsFile
   in
   let print_atomic_sets (pName : Procname.t) : unit =
     Opt.iter

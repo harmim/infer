@@ -648,11 +648,17 @@ val atomic_sets_widen_limit : int
 
 val atomicity_violations_widen_limit : int
 
-val atomicity_ignored_functions_file : string option
+val atomicity_ignored_function_calls_file : string option
 
-val atomicity_allowed_functions_file : string option
+val atomicity_ignored_function_analyses_file : string option
+
+val atomicity_allowed_function_calls_file : string option
+
+val atomicity_allowed_function_analyses_file : string option
 
 val atomic_sets_locked_functions_limit : int
+
+val atomic_sets_file_append : bool
 
 val unsafe_malloc : bool
 
