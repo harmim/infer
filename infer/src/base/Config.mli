@@ -660,6 +660,8 @@ val atomic_sets_locked_functions_limit : int
 
 val atomic_sets_file_append : bool
 
+val atomic_sets_functions_depth_limit : int
+
 val unsafe_malloc : bool
 
 val worklist_mode : int

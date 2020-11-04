@@ -36,10 +36,10 @@ type summary
 val pp_summary : F.formatter -> summary -> unit
 (** A pretty printer of a summary. *)
 
-val update_astate_on_function_call_with_summary : t -> summary -> t
+val update_astate_with_summary : t -> summary -> t
 (** Updates an abstract state on a function call with its summary. *)
 
-val convert_astate_to_summary : t -> summary
+val astate_to_summary : t -> summary
 (** Converts an abstract state to a summary. *)
 
 val print_atomic_sets : Out_channel.t -> string -> summary -> unit

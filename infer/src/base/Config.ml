@@ -2362,6 +2362,18 @@ and atomic_sets_file_append : bool ref =
      instead of overriding in the 'atomic-sets' checker."
 
 
+and atomic_sets_functions_depth_limit : int ref =
+  CLOpt.mk_int
+    ~default:10
+    ~default_to_string:string_of_int
+    ~long:"atomic-sets-functions-depth-limit"
+    ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
+    ~meta:"int"
+    "Specify the maximum depth in the hierarchy of function calls to which \
+     function calls will be considered during the 'atomic-sets' checker \
+     analysis. The default value is 10."
+
+
 and uninit_interproc =
   CLOpt.mk_bool ~long:"uninit-interproc" "Run uninit check in the experimental interprocedural mode"
 
@@ -3188,6 +3200,8 @@ and atomic_sets_locked_functions_limit : int =
   !atomic_sets_locked_functions_limit
 
 and atomic_sets_file_append : bool = !atomic_sets_file_append
+
+and atomic_sets_functions_depth_limit : int = !atomic_sets_functions_depth_limit
 
 and unsafe_malloc = !unsafe_malloc
 

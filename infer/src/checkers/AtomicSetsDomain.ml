@@ -5,6 +5,7 @@ open! IStd
 open! AtomicityUtils
 
 module F = Format
+module L = List
 module Opt = Option
 module S = String
 module Set = Caml.Set
@@ -54,7 +55,8 @@ end)
 type tElement =
   { calls: SSet.t
   ; callsPairs: CallsPairWithPathSet.t
-  ; finalCallsPairs: CallsPairSet.t }
+  ; finalCallsPairs: CallsPairSet.t
+  ; allOccurrences: SSet.t list }
 
 (** A set of types tElement is an abstract state. *)
 module TSet = Set.Make (struct
@@ -65,6 +67,11 @@ module TSet = Set.Make (struct
       SSet.equal e1.calls e2.calls
       && CallsPairWithPathSet.equal e1.callsPairs e2.callsPairs
       && CallsPairSet.equal e1.finalCallsPairs e2.finalCallsPairs
+      &&
+        L.equal
+          (fun (a : SSet.t) (b : SSet.t) : bool -> SSet.equal a b)
+          e1.allOccurrences
+          e2.allOccurrences
     then 0 else if Stdlib.compare e1 e2 > 0 then 1 else -1
 end)
 
@@ -75,7 +82,8 @@ let initial : t =
   TSet.singleton
     { calls= SSet.empty
     ; callsPairs= CallsPairWithPathSet.empty
-    ; finalCallsPairs= CallsPairSet.empty }
+    ; finalCallsPairs= CallsPairSet.empty
+    ; allOccurrences= [SSet.empty] }
 
 let pp (fmt : F.formatter) (astate : t) : unit =
   F.pp_print_string fmt "\n";
@@ -96,6 +104,7 @@ let pp (fmt : F.formatter) (astate : t) : unit =
       ((pFst, pSnd), path as callsPair : callsPairWithPath) : unit =
       let withoutLock : string = S.concat (SSet.elements pFst) ~sep:", "
       and withLock : string = S.concat (SSet.elements pSnd) ~sep:", " in
+
       ( match path with
         Some (path : AccessPath.t) ->
           F.fprintf
@@ -118,6 +127,7 @@ let pp (fmt : F.formatter) (astate : t) : unit =
     let print_final_calls_pair (pFst, pSnd as callsPair : callsPair) : unit =
       let withoutLock : string = S.concat (SSet.elements pFst) ~sep:", "
       and withLock : string = S.concat (SSet.elements pSnd) ~sep:", " in
+
       F.fprintf fmt "{%s} ( {%s} )" withoutLock withLock;
 
       if not (phys_equal callsPair (Opt.value_exn lastFinalCallsPair)) then
@@ -125,6 +135,18 @@ let pp (fmt : F.formatter) (astate : t) : unit =
     in
     CallsPairSet.iter print_final_calls_pair astateEl.finalCallsPairs;
     F.pp_print_string fmt ";\n";
+
+    (* allOccurrences *)
+    let print_all_occurrences (i : int) (allOccurrences : SSet.t) : unit =
+      F.fprintf
+        fmt
+        "\t\t%i: {%s};\n"
+        i
+        (S.concat (SSet.elements allOccurrences) ~sep:", ")
+    in
+    F.pp_print_string fmt "\t{\n";
+    L.iteri astateEl.allOccurrences ~f:print_all_occurrences;
+    F.pp_print_string fmt "\t};\n";
 
     F.pp_print_string fmt "}\n"
   in
@@ -156,11 +178,19 @@ let update_astate_on_function_call (astate : t) (f : string) : t =
           ( fun ((pFst, pSnd), path : callsPairWithPath) : callsPairWithPath ->
             (pFst, SSet.add f pSnd), path )
           astateEl.callsPairs
+      and allOccurrences : SSet.t list =
+        L.mapi
+          astateEl.allOccurrences
+          ~f:( fun (i : int) (occurrences : SSet.t) : SSet.t ->
+            if phys_equal i 0 then SSet.add f occurrences else occurrences )
       in
 
-      (* Update the calls and the calls pairs. *)
+      (* Update the calls and the calls pairs and the all occurrences. *)
       modify_astate_el_after_function_calls
-        {astateEl with calls= calls; callsPairs= callsPairs}
+        { astateEl with
+          calls= calls
+        ; callsPairs= callsPairs
+        ; allOccurrences= allOccurrences }
   in
   TSet.map mapper astate
 
@@ -190,7 +220,8 @@ let update_astate_on_unlock (astate : t) (lockPath : AccessPath.t option) : t =
     in
 
     (* Clear the calls, update the calls pairs and the final calls pairs. *)
-    { calls= SSet.empty
+    { astateEl with
+      calls= SSet.empty
     ; callsPairs= callsPairs
     ; finalCallsPairs= !finalCallsPairs }
   in
@@ -210,7 +241,8 @@ let update_astate_at_the_end_of_function (astate : t) : t =
         CallsPairSet.add (astateEl.calls, SSet.empty) !finalCallsPairs;
 
     (* Clear the calls and the calls pairs, and update the final calls pairs. *)
-    { calls= SSet.empty
+    { astateEl with
+      calls= SSet.empty
     ; callsPairs= CallsPairWithPathSet.empty
     ; finalCallsPairs= !finalCallsPairs }
   in
@@ -218,7 +250,7 @@ let update_astate_at_the_end_of_function (astate : t) : t =
 
 (* ****************************** Summary *********************************** *)
 
-type summary = {atomicFunctions: SSSet.t; allOccurrences: SSet.t}
+type summary = {atomicFunctions: SSSet.t; allOccurrences: SSet.t list}
 
 let pp_summary (fmt : F.formatter) (summary : summary) : unit =
   F.pp_print_string fmt "\n";
@@ -238,48 +270,95 @@ let pp_summary (fmt : F.formatter) (summary : summary) : unit =
   F.pp_print_string fmt "\n";
 
   (* allOccurrences *)
-  F.fprintf
-    fmt
-    "allOccurrences: {%s}\n"
-    (S.concat (SSet.elements summary.allOccurrences) ~sep:", ");
+  let print_all_occurrences (i : int) (allOccurrences : SSet.t) : unit =
+    F.fprintf
+      fmt
+      "\t%i: {%s};\n"
+      i
+      (S.concat (SSet.elements allOccurrences) ~sep:", ")
+  in
+  F.pp_print_string fmt "allOccurrences:\n{\n";
+  L.iteri summary.allOccurrences ~f:print_all_occurrences;
+  F.pp_print_string fmt "}\n";
 
   F.pp_print_string fmt "\n"
 
-let update_astate_on_function_call_with_summary
-  (astate : t) (summary : summary) : t =
-  (* Add all occurrences from a given summary to the calls pairs and to the
-     calls of each element of the abstract state. *)
-  if SSet.is_empty summary.allOccurrences then astate
-  else
-    let mapper (astateEl : tElement) : tElement =
-      let calls : SSet.t = SSet.union astateEl.calls summary.allOccurrences
-      and callsPairs : CallsPairWithPathSet.t =
-        CallsPairWithPathSet.map
-          ( fun ((pFst, pSnd), path : callsPairWithPath) : callsPairWithPath ->
-            (pFst, SSet.union pSnd summary.allOccurrences), path )
-          astateEl.callsPairs
-      in
+let update_astate_with_summary (astate : t) (summary : summary) : t =
+  (* Adds all occurrences from a given summary to the calls pairs and to the
+     calls of each element of the abstract state. And merges all occurrences
+     from a given summary with the all occurrences of each element of the
+     abstract state. *)
+  let mapper (astateEl : tElement) : tElement =
+    let allOccurrences : (SSet.t list) ref = ref astateEl.allOccurrences
+    and joinedAllOccurrences : SSet.t ref = ref SSet.empty in
 
-      (* Update the calls and the calls pairs. *)
-      modify_astate_el_after_function_calls
-        {astateEl with calls= calls; callsPairs= callsPairs}
+    let iterator (i : int) (occurrences : SSet.t) : unit =
+      if i + 1 < Config.atomic_sets_functions_depth_limit then
+        allOccurrences :=
+          ( match L.nth !allOccurrences (i + 1) with
+            Some (_ : SSet.t) ->
+              let mapper (j : int) (jOccurrences : SSet.t) : SSet.t =
+                if phys_equal (i + 1) j then SSet.union jOccurrences occurrences
+                else jOccurrences
+              in
+              L.mapi !allOccurrences ~f:mapper
+
+            | None ->
+              if SSet.is_empty occurrences then !allOccurrences
+              else !allOccurrences @ [occurrences]
+          );
+
+      if i < Config.atomic_sets_functions_depth_limit then
+        joinedAllOccurrences := SSet.union !joinedAllOccurrences occurrences
     in
-    TSet.map mapper astate
+    L.iteri summary.allOccurrences ~f:iterator;
 
-let convert_astate_to_summary (astate : t) : summary =
+    let calls : SSet.t = SSet.union astateEl.calls !joinedAllOccurrences
+    and callsPairs : CallsPairWithPathSet.t =
+      CallsPairWithPathSet.map
+        ( fun ((pFst, pSnd), path : callsPairWithPath) : callsPairWithPath ->
+          (pFst, SSet.union pSnd !joinedAllOccurrences), path )
+        astateEl.callsPairs
+    in
+
+    (* Update the calls and the calls pairs and the all occurrences. *)
+    modify_astate_el_after_function_calls
+      { astateEl with
+        calls= calls
+      ; callsPairs= callsPairs
+      ; allOccurrences= !allOccurrences }
+  in
+  TSet.map mapper astate
+
+let astate_to_summary (astate : t) : summary =
   (* Derivates atomic functions and all occurrences from the final calls pairs
      of elements of the abstract state. *)
   let atomicFunctions : SSSet.t ref = ref SSSet.empty
-  and allOccurrences : SSet.t ref = ref SSet.empty in
+  and allOccurrences : (SSet.t list) ref = ref [] in
 
   let iterator (astateEl : tElement) : unit =
-    let iterator (pFst, pSnd : callsPair) : unit =
+    let iterator (_, pSnd : callsPair) : unit =
       if not (SSet.is_empty pSnd) then
-        atomicFunctions := SSSet.add pSnd !atomicFunctions;
-
-      allOccurrences := SSet.union !allOccurrences (SSet.union pFst pSnd)
+        atomicFunctions := SSSet.add pSnd !atomicFunctions
     in
-    CallsPairSet.iter iterator astateEl.finalCallsPairs
+    CallsPairSet.iter iterator astateEl.finalCallsPairs;
+
+    let iterator (i : int) (occurrences : SSet.t) : unit =
+      allOccurrences :=
+        ( match L.nth !allOccurrences i with
+          Some (_ : SSet.t) ->
+            let mapper (j : int) (jOccurrences : SSet.t) : SSet.t =
+              if phys_equal i j then SSet.union jOccurrences occurrences
+              else jOccurrences
+            in
+            L.mapi !allOccurrences ~f:mapper
+
+          | None ->
+            if SSet.is_empty occurrences then !allOccurrences
+            else !allOccurrences @ [occurrences]
+        )
+    in
+    L.iteri astateEl.allOccurrences ~f:iterator
   in
   TSet.iter iterator astate;
 

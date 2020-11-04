@@ -49,7 +49,7 @@ let allowedFunctionAnalyses : functionsFromFile ref =
 
 (** An initialisation of a structure that holds function names loaded from
     a file. *)
-let initialiseFunctionsFromFile
+let initialise_functions_from_file
   (functions : functionsFromFile ref) (fileOpt : string option) : unit =
   if not !functions.initialised then (
     let names : SSet.t ref = ref SSet.empty in
@@ -78,13 +78,13 @@ let initialiseFunctionsFromFile
 
 let f_is_ignored
   ?(actualsOpt : (HilExp.t list) option = None) (f : Procname.t) : bool =
-  initialiseFunctionsFromFile
+  initialise_functions_from_file
     ignoredFunctionCalls Config.atomicity_ignored_function_calls_file;
-  initialiseFunctionsFromFile
+  initialise_functions_from_file
     ignoredFunctionAnalyses Config.atomicity_ignored_function_analyses_file;
-  initialiseFunctionsFromFile
+  initialise_functions_from_file
     allowedFunctionCalls Config.atomicity_allowed_function_calls_file;
-  initialiseFunctionsFromFile
+  initialise_functions_from_file
     allowedFunctionAnalyses Config.atomicity_allowed_function_analyses_file;
 
   let fString : string = Procname.to_string f
@@ -112,9 +112,8 @@ let f_is_ignored
   in
 
   if isLockUnlock then false
-  else if
-    not isCall && SSet.mem fString !ignoredFunctionAnalyses.names
-  then true
+  else if not isCall && SSet.mem fString !ignoredFunctionAnalyses.names then
+    true
   else if isCall && SSet.mem fString !ignoredFunctionCalls.names then true
   else if
     isCall

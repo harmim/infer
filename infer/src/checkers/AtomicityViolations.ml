@@ -92,7 +92,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
               ~caller_summary:pData.summary ~callee_pname:calleePname
             with
             Some (summary : D.summary) ->
-              D.update_astate_on_function_call_with_summary astate summary loc
+              D.update_astate_with_summary astate summary loc
 
             | None -> astate
           )
@@ -136,7 +136,7 @@ let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
     match Analyser.compute_post procData ~initial:initialPost with
     Some (post : D.t) ->
       (* Convert the abstract state to the function summary. *)
-      let convertedSummary : D.summary = D.convert_astate_to_summary post in
+      let convertedSummary : D.summary = D.astate_to_summary post in
 
       (* Debug log. *)
       let fmt : F.formatter = F.str_formatter

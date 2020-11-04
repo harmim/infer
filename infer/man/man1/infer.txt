@@ -119,6 +119,11 @@ OPTIONS
            checker. (Conversely: --no-atomic-sets-file-append)       
     See also infer-analyze(1).
 
+       --atomic-sets-functions-depth-limit int
+           Specify the maximum depth in the hierarchy of function calls to
+           which function calls will be considered during the 'atomic-sets'
+           checker analysis. The default value is 10.           See also infer-analyze(1).
+
        --atomic-sets-locked-functions-limit int
            Specify the maximum number of function calls that could appear in
            a critical section in the 'atomic-sets' checker. Critical sections

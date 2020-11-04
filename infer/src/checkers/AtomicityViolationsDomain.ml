@@ -362,7 +362,7 @@ let pp_summary (fmt : F.formatter) (summary : summary) : unit =
 
   F.pp_print_string fmt "\n"
 
-let update_astate_on_function_call_with_summary
+let update_astate_with_summary
   (astate : t) (summary : summary) (loc : Location.t) : t =
   (* Add the last calls from a given summary to the nested last calls of the
      abstract state and check for atomicity violations with the first calls of
@@ -396,7 +396,7 @@ let update_astate_on_function_call_with_summary
     in
     TSet.map mapper astate
 
-let convert_astate_to_summary (astate : t) : summary =
+let astate_to_summary (astate : t) : summary =
   (* Derivates the first calls and the last calls from the first calls and from
      the last pairs of elements of the abstract state. *)
   let firstCalls : SSet.t ref = ref SSet.empty

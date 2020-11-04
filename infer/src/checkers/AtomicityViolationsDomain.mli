@@ -38,11 +38,10 @@ type summary
 val pp_summary : F.formatter -> summary -> unit
 (** A pretty printer of a summary. *)
 
-val update_astate_on_function_call_with_summary :
-  t -> summary -> Location.t -> t
+val update_astate_with_summary : t -> summary -> Location.t -> t
 (** Updates an abstract state on a function call with its summary. *)
 
-val convert_astate_to_summary : t -> summary
+val astate_to_summary : t -> summary
 (** Converts an abstract state to a summary. *)
 
 val report_atomicity_violations : t -> (Location.t -> string -> unit) -> unit
