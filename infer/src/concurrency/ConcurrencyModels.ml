@@ -116,15 +116,14 @@ end = struct
     fun pname -> QualifiedCppName.Match.match_qualifiers matcher (Procname.get_qualifiers pname)
 
 
-  let
-    is_lock,
-    is_unlock,
-    is_trylock,
-    is_std_lock,
-    is_std_trylock,
-    is_pthread_lock,
-    is_pthread_unlock,
-    is_pthread_trylock =
+  let ( is_lock
+      , is_unlock
+      , is_trylock
+      , is_std_lock
+      , (is_std_trylock : Procname.t -> bool)
+      , (is_pthread_lock : Procname.t -> bool)
+      , (is_pthread_unlock : Procname.t -> bool)
+      , (is_pthread_trylock : Procname.t -> bool) ) =
     let mk_model_matcher ~f =
       let lock_methods =
         List.concat_map lock_models ~f:(fun mdl ->

@@ -154,19 +154,20 @@ let all_checkers =
   ; { name= "Atomicity violations analysis - detection of atomic sets"
     ; active= Config.is_checker_enabled AtomicSets
     ; callbacks=
-      [ (Procedure AtomicSets.analyse_procedure, Clang)
-      ; (Procedure AtomicSets.analyse_procedure, Java)
-      ; ( File { callback= AtomicSets.print_atomic_sets
-               ; issue_dir= Config.atomic_sets_issues_dir_name }
-        , Clang )
-      ; ( File { callback= AtomicSets.print_atomic_sets
-               ; issue_dir= Config.atomic_sets_issues_dir_name }
-        , Java ) ] }
+        [ (Procedure AtomicSets.analyse_procedure, Clang)
+        ; (Procedure AtomicSets.analyse_procedure, Java)
+        ; ( File
+              {callback= AtomicSets.print_atomic_sets; issue_dir= Config.atomic_sets_issues_dir_name}
+          , Clang )
+        ; ( File
+              {callback= AtomicSets.print_atomic_sets; issue_dir= Config.atomic_sets_issues_dir_name}
+          , Java ) ] }
   ; { name= "Atomicity violations analysis - detection of atomicity violations"
     ; active= Config.is_checker_enabled AtomicityViolations
     ; callbacks=
-      [ (Procedure AtomicityViolations.analyse_procedure, Clang)
-      ; (Procedure AtomicityViolations.analyse_procedure, Java) ] } ]
+        [ (Procedure AtomicityViolations.analyse_procedure, Clang)
+        ; (Procedure AtomicityViolations.analyse_procedure, Java) ] } ]
+
 
 let get_active_checkers () =
   let filter_checker {active} = active in

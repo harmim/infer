@@ -53,12 +53,10 @@ let fields =
     ~starvation:(fun f -> mk f "Starvation" StarvationDomain.pp_summary)
     ~nullsafe:(fun f -> mk f "Nullsafe" NullsafeSummary.pp)
     ~uninit:(fun f -> mk f "Uninitialised" UninitDomain.Summary.pp)
-    ~atomic_sets:( fun
-      (f : (t, AtomicSetsDomain.summary option) Field.t) : field ->
-        mk f "AtomicSets" AtomicSetsDomain.pp_summary )
-    ~atomicity_violations:( fun
-      (f : (t, AtomicityViolationsDomain.summary option) Field.t) : field ->
-        mk f "AtomicityViolations" AtomicityViolationsDomain.pp_summary )
+    ~atomic_sets:(fun (f : (t, AtomicSetsDomain.summary option) Field.t) ->
+      mk f "AtomicSets" AtomicSetsDomain.pp_summary)
+    ~atomicity_violations:(fun (f : (t, AtomicityViolationsDomain.summary option) Field.t) ->
+      mk f "AtomicityViolations" AtomicityViolationsDomain.pp_summary)
 
 
 let pp pe f payloads =

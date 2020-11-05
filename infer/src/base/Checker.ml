@@ -253,16 +253,14 @@ let config checker =
       ; cli_deprecated_flags= [] }
   | AtomicSets ->
       { support= supports_clang_and_java
-      ; short_documentation=
-        "atomicity violations analysis - detection of atomic sets"
+      ; short_documentation= "atomicity violations analysis - detection of atomic sets"
       ; show_in_help= true
       ; cli_flag= "atomic-sets"
       ; enabled_by_default= false
       ; cli_deprecated_flags= [] }
   | AtomicityViolations ->
       { support= supports_clang_and_java
-      ; short_documentation=
-        "atomicity violations analysis - detection of atomicity violations"
+      ; short_documentation= "atomicity violations analysis - detection of atomicity violations"
       ; show_in_help= true
       ; cli_flag= "atomicity-violations"
       ; enabled_by_default= false

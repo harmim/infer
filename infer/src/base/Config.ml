@@ -179,8 +179,7 @@ let manual_racerd = "RACERD CHECKER OPTIONS"
 
 let manual_siof = "SIOF CHECKER OPTIONS"
 
-let manual_atomicity_violations : string =
-  "ATOMICITY VIOLATIONS CHECKER OPTIONS"
+let manual_atomicity_violations : string = "ATOMICITY VIOLATIONS CHECKER OPTIONS"
 
 let max_narrows = 5
 
@@ -2279,99 +2278,71 @@ and type_size =
 
 
 and atomic_sets_widen_limit : int ref =
-  CLOpt.mk_int
-    ~default:5
-    ~default_to_string:string_of_int
-    ~long:"atomic-sets-widen-limit"
+  CLOpt.mk_int ~default:5 ~meta:"int" ~long:"atomic-sets-widen-limit"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
-    ~meta:"int"
-    "Specify the maximum number of iterations in a widening operator in the \
-     'atomic-sets' checker. Under-approximation after specified loop \
-     iterations. The default value is 5."
+    ~default_to_string:string_of_int
+    "Specify the maximum number of iterations in a widening operator in the 'atomic-sets' checker. \
+     Under-approximation after specified loop iterations. The default value is 5."
 
 
 and atomicity_violations_widen_limit : int ref =
-  CLOpt.mk_int
-    ~default:1000
-    ~default_to_string:string_of_int
-    ~long:"atomicity-violations-widen-limit"
+  CLOpt.mk_int ~default:1000 ~meta:"int" ~long:"atomicity-violations-widen-limit"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
-    ~meta:"int"
-    "Specify the maximum number of iterations in a widening operator in the \
-     'atomicity-violations' checker. Under-approximation after specified loop \
-     iterations. The default value is 1000."
+    ~default_to_string:string_of_int
+    "Specify the maximum number of iterations in a widening operator in the 'atomicity-violations' \
+     checker. Under-approximation after specified loop iterations. The default value is 1000."
 
 
 and atomicity_ignored_function_calls_file : string option ref =
-  CLOpt.mk_path_opt
-    ~long:"atomicity-ignored-function-calls"
+  CLOpt.mk_path_opt ~long:"atomicity-ignored-function-calls" ~meta:"file"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
-    ~meta:"file"
-    "Specify a file with function names whose calls should be ignored during \
-    the analysis of 'atomic-sets' and 'atomicity-violations' checkers."
+    "Specify a file with function names whose calls should be ignored during the analysis of \
+     'atomic-sets' and 'atomicity-violations' checkers."
 
 
 and atomicity_ignored_function_analyses_file : string option ref =
-  CLOpt.mk_path_opt
-    ~long:"atomicity-ignored-function-analyses"
+  CLOpt.mk_path_opt ~long:"atomicity-ignored-function-analyses" ~meta:"file"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
-    ~meta:"file"
-    "Specify a file with function names whose analysis should be ignored \
-     during the analysis of 'atomic-sets' and 'atomicity-violations' checkers."
+    "Specify a file with function names whose analysis should be ignored during the analysis of \
+     'atomic-sets' and 'atomicity-violations' checkers."
 
 
 and atomicity_allowed_function_calls_file : string option ref =
-  CLOpt.mk_path_opt
-    ~long:"atomicity-allowed-function-calls"
+  CLOpt.mk_path_opt ~long:"atomicity-allowed-function-calls" ~meta:"file"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
-    ~meta:"file"
-    "Specify a file with function names whose calls should be allowed during \
-     the analysis of 'atomic-sets' and 'atomicity-violations' checkers. Other \
-     functions will be ignored."
+    "Specify a file with function names whose calls should be allowed during the analysis of \
+     'atomic-sets' and 'atomicity-violations' checkers. Other functions will be ignored."
 
 
 and atomicity_allowed_function_analyses_file : string option ref =
-  CLOpt.mk_path_opt
-    ~long:"atomicity-allowed-function-analyses"
+  CLOpt.mk_path_opt ~long:"atomicity-allowed-function-analyses" ~meta:"file"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
-    ~meta:"file"
-    "Specify a file with function names whose analysis should be allowed \
-     during the analysis of 'atomic-sets' and 'atomicity-violations' checkers. \
-     Other functions will be ignored."
+    "Specify a file with function names whose analysis should be allowed during the analysis of \
+     'atomic-sets' and 'atomicity-violations' checkers. Other functions will be ignored."
 
 
 and atomic_sets_locked_functions_limit : int ref =
-  CLOpt.mk_int
-    ~default:20
-    ~default_to_string:string_of_int
-    ~long:"atomic-sets-locked-functions-limit"
+  CLOpt.mk_int ~default:20 ~meta:"int" ~long:"atomic-sets-locked-functions-limit"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
-    ~meta:"int"
-    "Specify the maximum number of function calls that could appear in \
-     a critical section in the 'atomic-sets' checker. Critical sections with \
-     more function names will be ignored. The default value is 20."
+    ~default_to_string:string_of_int
+    "Specify the maximum number of function calls that could appear in a critical section in the \
+     'atomic-sets' checker. Critical sections with more function names will be ignored. The \
+     default value is 20."
 
 
 and atomic_sets_file_append : bool ref =
-  CLOpt.mk_bool
-    ~default:false
-    ~long:"atomic-sets-file-append"
+  CLOpt.mk_bool ~default:false ~long:"atomic-sets-file-append" ~meta:"bool"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
-    ~meta:"bool"
-    "Specify whether functions should be appended to the atomic sets file \
-     instead of overriding in the 'atomic-sets' checker."
+    "Specify whether functions should be appended to the atomic sets file instead of overriding in \
+     the 'atomic-sets' checker."
 
 
 and atomic_sets_functions_depth_limit : int ref =
-  CLOpt.mk_int
-    ~default:10
-    ~default_to_string:string_of_int
-    ~long:"atomic-sets-functions-depth-limit"
+  CLOpt.mk_int ~default:10 ~meta:"int" ~long:"atomic-sets-functions-depth-limit"
     ~in_help:[(InferCommand.Analyze, manual_atomicity_violations)]
-    ~meta:"int"
-    "Specify the maximum depth in the hierarchy of function calls to which \
-     function calls will be considered during the 'atomic-sets' checker \
-     analysis. The default value is 10."
+    ~default_to_string:string_of_int
+    "Specify the maximum depth in the hierarchy of function calls to which function calls will be \
+     considered during the 'atomic-sets' checker analysis. The default value is 10."
 
 
 and uninit_interproc =
@@ -3184,20 +3155,19 @@ and atomic_sets_widen_limit : int = !atomic_sets_widen_limit
 
 and atomicity_violations_widen_limit : int = !atomicity_violations_widen_limit
 
-and atomicity_ignored_function_calls_file : string option =
-  !atomicity_ignored_function_calls_file
+and atomicity_ignored_function_calls_file : string option = !atomicity_ignored_function_calls_file
 
 and atomicity_ignored_function_analyses_file : string option =
   !atomicity_ignored_function_analyses_file
 
-and atomicity_allowed_function_calls_file : string option =
-  !atomicity_allowed_function_calls_file
+
+and atomicity_allowed_function_calls_file : string option = !atomicity_allowed_function_calls_file
 
 and atomicity_allowed_function_analyses_file : string option =
   !atomicity_allowed_function_analyses_file
 
-and atomic_sets_locked_functions_limit : int =
-  !atomic_sets_locked_functions_limit
+
+and atomic_sets_locked_functions_limit : int = !atomic_sets_locked_functions_limit
 
 and atomic_sets_file_append : bool = !atomic_sets_file_append
 

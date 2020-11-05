@@ -527,9 +527,9 @@ let wrong_argument_number =
 let unreachable_cost_call ~kind =
   register_from_cost_string ~enabled:false ~kind "%s_UNREACHABLE_AT_EXIT"
 
-let atomicity_violation =
-  register_from_string
-    ~enabled:true ~hum:"Atomicity Violation" "ATOMICITY_VIOLATION"
+
+let atomicity_violation : t =
+  register_from_string ~enabled:true ~hum:"Atomicity Violation" "ATOMICITY_VIOLATION"
 
 
 (* register enabled cost issues *)
