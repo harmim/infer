@@ -3,14 +3,12 @@
 
 open! IStd
 
-module AccessExp = HilExp.AccessExpression
-module Opt = Option
-module S = String
+module L = Logging
 module Set = Caml.Set
 
 (* ****************************** Modules *********************************** *)
 
-module SSet = Set.Make (S)
+module SSet = Set.Make (String)
 
 (* ****************************** Constants ********************************* *)
 
@@ -20,8 +18,9 @@ let atomicSetsFile : string = inferDir ^ "/atomic-sets"
 
 (* ****************************** Functions ********************************* *)
 
-let str_contains (s1 : string) (s2 : string) : bool =
-  try ignore (Str.search_forward (Str.regexp_string s2) s1 0); true
+let str_contains
+  ~haystack:(haystack : string) ~needle:(needle : string) : bool =
+  try ignore (Str.search_forward (Str.regexp_string needle) haystack 0); true
   with Caml.Not_found -> false
 
 (** A type of a structure that holds function names loaded from a file. *)
@@ -60,7 +59,7 @@ let initialise_functions_from_file
           `Yes -> ()
 
           | _ ->
-            Logging.(die UserError)
+            L.(die UserError)
               "File '%s' that should contain function names does not exist."
               file
         );
@@ -77,7 +76,9 @@ let initialise_functions_from_file
   )
 
 let f_is_ignored
-  ?(actualsOpt : (HilExp.t list) option = None) (f : Procname.t) : bool =
+  ?actuals:(actualsOpt : (HilExp.t list) option = None)
+  (f : Procname.t)
+  : bool =
   initialise_functions_from_file
     ignoredFunctionCalls Config.atomicity_ignored_function_calls_file;
   initialise_functions_from_file
@@ -88,7 +89,7 @@ let f_is_ignored
     allowedFunctionAnalyses Config.atomicity_allowed_function_analyses_file;
 
   let fString : string = Procname.to_string f
-  and isCall : bool = Opt.is_some actualsOpt
+  and isCall : bool = Option.is_some actualsOpt
   and isLockUnlock : bool =
     if Procname.equal f BuiltinDecl.__set_locked_attribute then true
     else if Procname.equal f BuiltinDecl.__delete_locked_attribute then true
@@ -119,11 +120,18 @@ let f_is_ignored
     isCall
     && (
       Procname.is_constructor f
-      || str_contains fString Config.clang_inner_destructor_prefix
+      ||
+        str_contains
+          ~haystack:fString
+          ~needle:Config.clang_inner_destructor_prefix
     )
   then true
-  else if str_contains fString Config.clang_initializer_prefix then true
-  else if str_contains fString "__" && BuiltinDecl.is_declared f then true
+  else if
+    str_contains ~haystack:fString ~needle:Config.clang_initializer_prefix
+  then true
+  else if
+    str_contains ~haystack:fString ~needle:"__" && BuiltinDecl.is_declared f
+  then true
   else if
     not isCall
     && not (SSet.is_empty !allowedFunctionAnalyses.names)
@@ -136,7 +144,7 @@ let f_is_ignored
 
 let get_lock_path (exp : HilExp.t) : AccessPath.t option =
   match HilExp.get_access_exprs exp with
-  (accessExp :: _ : AccessExp.t list) ->
-    Some (AccessExp.to_access_path accessExp)
+  (accessExp :: _ : HilExp.AccessExpression.t list) ->
+    Some (HilExp.AccessExpression.to_access_path accessExp)
 
   | _ -> None

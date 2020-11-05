@@ -3,12 +3,11 @@
 
 open! IStd
 
-module S = String
 module Set = Caml.Set
 
 (* ****************************** Modules *********************************** *)
 
-module SSet : module type of Set.Make (S)
+module SSet : module type of Set.Make (String)
 (** A set of strings. *)
 
 (* ****************************** Constants ********************************* *)
@@ -21,10 +20,10 @@ val atomicSetsFile : string
 
 (* ****************************** Functions ********************************* *)
 
-val str_contains : string -> string -> bool
+val str_contains : haystack:string -> needle:string -> bool
 (** Checks whether the second string is a substring of the first string. *)
 
-val f_is_ignored : ?actualsOpt:(HilExp.t list) option -> Procname.t -> bool
+val f_is_ignored : ?actuals:(HilExp.t list) option -> Procname.t -> bool
 (** Checks whether a given function is ignored. *)
 
 val get_lock_path : HilExp.t -> AccessPath.t option
