@@ -11,13 +11,13 @@ module SSet = AtomicityUtils.SSet
 (* ************************************ Types *************************************************** *)
 
 (** A pair of atomic functions. *)
-type atomicPair = string * string
+type atomicPair = string * string [@@deriving compare]
 
 (** A pair of atomic functions with its location. *)
-type atomicPairLoc = {pair: atomicPair; line: int; col: int; file: string}
+type atomicPairLoc = {pair: atomicPair; line: int; col: int; file: string} [@@deriving compare]
 
 (** A pair of atomic functions with an access path. *)
-type atomicPairWithPath = atomicPair * AccessPath.t option
+type atomicPairWithPath = atomicPair * AccessPath.t option [@@deriving compare]
 
 (* ************************************ Functions *********************************************** *)
 
@@ -30,9 +30,7 @@ let make_atomic_pair_loc (p : atomicPair) (loc : Location.t) : atomicPairLoc =
 let atomic_pair_push ((_, pSnd) : atomicPair) (s : string) : atomicPair = (pSnd, s)
 
 (** Checks whether atomic pairs are equal. *)
-let atomic_pairs_eq ((p1Fst, p1Snd) : atomicPair) ((p2Fst, p2Snd) : atomicPair) : bool =
-  String.equal p1Fst p2Fst && String.equal p1Snd p2Snd
-
+let atomic_pairs_eq : atomicPair -> atomicPair -> bool = [%compare.equal: atomicPair]
 
 (** An empty pair of atomic functions. *)
 let emptyAtomicPair : atomicPair = ("", "")
@@ -41,39 +39,23 @@ let emptyAtomicPair : atomicPair = ("", "")
 
 (** A set of pairs of atomic functions. *)
 module AtomicPairSet = Set.Make (struct
-  type t = atomicPair
-
-  let compare (p1 : t) (p2 : t) : int =
-    if atomic_pairs_eq p1 p2 then 0 else if Stdlib.compare p1 p2 > 0 then 1 else -1
+  type t = atomicPair [@@deriving compare]
 end)
 
 (** A set of pairs of atomic functions with its location. *)
 module AtomicPairLocSet = Set.Make (struct
-  type t = atomicPairLoc
-
-  let compare (p1 : t) (p2 : t) : int =
-    if
-      atomic_pairs_eq p1.pair p2.pair && phys_equal p1.line p2.line && phys_equal p1.col p2.col
-      && String.equal p1.file p2.file
-    then 0
-    else if Stdlib.compare p1 p2 > 0 then 1
-    else -1
+  type t = atomicPairLoc [@@deriving compare]
 end)
 
 (** A set of pairs of atomic functions with an access path. *)
 module AtomicPairWithPathSet = Set.Make (struct
-  type t = atomicPairWithPath
-
-  let compare ((p1, path1) : t) ((p2, path2) : t) : int =
-    if atomic_pairs_eq p1 p2 && Option.equal AccessPath.equal path1 path2 then 0
-    else if Stdlib.compare p1 p2 > 0 then 1
-    else -1
+  type t = atomicPairWithPath [@@deriving compare]
 end)
 
 (* ************************************ Global data ********************************************* *)
 
 (** A type of global data. *)
-type globalData = {initialised: bool; atomicPairs: AtomicPairSet.t}
+type globalData = {initialised: bool; atomicPairs: AtomicPairSet.t} [@@deriving compare]
 
 (** A global data reference. *)
 let globalData : globalData ref = ref {initialised= false; atomicPairs= AtomicPairSet.empty}
@@ -154,25 +136,16 @@ type tElement =
   ; nestedLastCalls: SSet.t
   ; atomicityViolations: AtomicPairLocSet.t
   ; lockedLastPairs: AtomicPairWithPathSet.t }
+[@@deriving compare]
 
 (** A set of types tElement is an abstract state. *)
 module TSet = Set.Make (struct
-  type t = tElement
-
-  let compare (e1 : t) (e2 : t) : int =
-    if
-      String.equal e1.firstCall e2.firstCall
-      && atomic_pairs_eq e1.lastPair e2.lastPair
-      && SSet.equal e1.nestedLastCalls e2.nestedLastCalls
-      && AtomicPairLocSet.equal e1.atomicityViolations e2.atomicityViolations
-      && AtomicPairWithPathSet.equal e1.lockedLastPairs e2.lockedLastPairs
-    then 0
-    else if Stdlib.compare e1 e2 > 0 then 1
-    else -1
+  type t = tElement [@@deriving compare]
 end)
 
-(** An abstract state of a function. *)
-type t = TSet.t
+type t = TSet.t [@@deriving compare]
+
+type astate = t [@@deriving compare]
 
 let initial : t =
   (* An initial abstract state is a set with a single empty element. *)
@@ -289,58 +262,6 @@ let apply_unlock ?ap:(lockPath : AccessPath.t option = None) (astate : t) : t =
   TSet.map mapper astate
 
 
-(* ************************************ Summary ************************************************* *)
-
-type summary = {firstCalls: SSet.t; lastCalls: SSet.t}
-
-let pp_summary (fmt : F.formatter) (summary : summary) : unit =
-  F.pp_print_string fmt "\n" ;
-  (* firstCalls *)
-  F.fprintf fmt "firstCalls: {%s}\n" (String.concat (SSet.elements summary.firstCalls) ~sep:", ") ;
-  (* lastCalls *)
-  F.fprintf fmt "lastCalls: {%s}\n" (String.concat (SSet.elements summary.lastCalls) ~sep:", ") ;
-  F.pp_print_string fmt "\n"
-
-
-let apply_summary (astate : t) (summary : summary) (loc : Location.t) : t =
-  (* Add the last calls from a given summary to the nested last calls of the abstract state and
-     check for atomicity violations with the first calls of a given summary. *)
-  if SSet.is_empty summary.firstCalls && SSet.is_empty summary.lastCalls then astate
-  else
-    let mapper (astateEl : tElement) : tElement =
-      let atomicityViolations : AtomicPairLocSet.t ref = ref astateEl.atomicityViolations
-      and lastCall : string = snd astateEl.lastPair in
-      let iterator (firstCall : string) : unit =
-        let p : atomicPair = (lastCall, firstCall) in
-        let lockedLastPairs : AtomicPairWithPathSet.t =
-          AtomicPairWithPathSet.map
-            (fun ((_, path) : atomicPairWithPath) -> (p, path))
-            astateEl.lockedLastPairs
-        in
-        (* Check whether each pair begining with the last called function and ending witch the first
-           call of a given summary is violating atomicity. *)
-        check_violating_atomicity p ~atomicityViolations ~lockedLastPairs loc
-      in
-      SSet.iter iterator summary.firstCalls ;
-      {astateEl with nestedLastCalls= summary.lastCalls; atomicityViolations= !atomicityViolations}
-    in
-    TSet.map mapper astate
-
-
-let astate_to_summary (astate : t) : summary =
-  (* Derivates the first calls and the last calls from the first calls and from the last pairs of
-     elements of the abstract state. *)
-  let firstCalls : SSet.t ref = ref SSet.empty and lastCalls : SSet.t ref = ref SSet.empty in
-  let iterator (astateEl : tElement) : unit =
-    if not (String.is_empty astateEl.firstCall) then
-      firstCalls := SSet.add astateEl.firstCall !firstCalls ;
-    if not (String.is_empty (snd astateEl.lastPair)) then
-      lastCalls := SSet.add (snd astateEl.lastPair) !lastCalls
-  in
-  TSet.iter iterator astate ;
-  {firstCalls= !firstCalls; lastCalls= !lastCalls}
-
-
 let report_atomicity_violations (astate : t) ~f:(report : Location.t -> msg:string -> unit) : unit =
   (* Report atomicity violations from atomicity violations stored in the abstract state. *)
   let iterator (astateEl : tElement) : unit =
@@ -375,3 +296,56 @@ let join (astate1 : t) (astate2 : t) : t = TSet.union astate1 astate2
 (** A widen operator of abstract states. Join previous and next abstract states. *)
 let widen ~prev:(p : t) ~next:(n : t) ~num_iters:(i : int) : t =
   if i <= Config.atomicity_violations_widen_limit then join p n else p
+
+
+(* ************************************ Summary ************************************************* *)
+
+module Summary = struct
+  type t = {firstCalls: SSet.t; lastCalls: SSet.t} [@@deriving compare]
+
+  let pp (fmt : F.formatter) (summary : t) : unit =
+    F.pp_print_string fmt "\n" ;
+    (* firstCalls *)
+    F.fprintf fmt "firstCalls: {%s}\n" (String.concat (SSet.elements summary.firstCalls) ~sep:", ") ;
+    (* lastCalls *)
+    F.fprintf fmt "lastCalls: {%s}\n" (String.concat (SSet.elements summary.lastCalls) ~sep:", ") ;
+    F.pp_print_string fmt "\n"
+
+
+  let make (astate : astate) : t =
+    (* Derivates the first calls and the last calls from the first calls and from the last pairs of
+       elements of the abstract state. *)
+    let firstCalls : SSet.t ref = ref SSet.empty and lastCalls : SSet.t ref = ref SSet.empty in
+    let iterator (astateEl : tElement) : unit =
+      if not (String.is_empty astateEl.firstCall) then
+        firstCalls := SSet.add astateEl.firstCall !firstCalls ;
+      if not (String.is_empty (snd astateEl.lastPair)) then
+        lastCalls := SSet.add (snd astateEl.lastPair) !lastCalls
+    in
+    TSet.iter iterator astate ;
+    {firstCalls= !firstCalls; lastCalls= !lastCalls}
+end
+
+let apply_summary (astate : t) (summary : Summary.t) (loc : Location.t) : t =
+  (* Add the last calls from a given summary to the nested last calls of the abstract state and
+     check for atomicity violations with the first calls of a given summary. *)
+  if SSet.is_empty summary.firstCalls && SSet.is_empty summary.lastCalls then astate
+  else
+    let mapper (astateEl : tElement) : tElement =
+      let atomicityViolations : AtomicPairLocSet.t ref = ref astateEl.atomicityViolations
+      and lastCall : string = snd astateEl.lastPair in
+      let iterator (firstCall : string) : unit =
+        let p : atomicPair = (lastCall, firstCall) in
+        let lockedLastPairs : AtomicPairWithPathSet.t =
+          AtomicPairWithPathSet.map
+            (fun ((_, path) : atomicPairWithPath) -> (p, path))
+            astateEl.lockedLastPairs
+        in
+        (* Check whether each pair begining with the last called function and ending witch the first
+           call of a given summary is violating atomicity. *)
+        check_violating_atomicity p ~atomicityViolations ~lockedLastPairs loc
+      in
+      SSet.iter iterator summary.firstCalls ;
+      {astateEl with nestedLastCalls= summary.lastCalls; atomicityViolations= !atomicityViolations}
+    in
+    TSet.map mapper astate

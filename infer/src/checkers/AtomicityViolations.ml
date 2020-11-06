@@ -9,7 +9,7 @@ module L = Logging
 
 (** A summary payload for analysed functions. *)
 module Payload = SummaryPayload.Make (struct
-  type t = Domain.summary (* A type of the payload is a domain summary. *)
+  type t = Domain.Summary.t (* A type of the payload is a domain summary. *)
 
   let field : (Payloads.t, t option) Field.t = Payloads.Fields.atomicity_violations
 end)
@@ -67,7 +67,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
             let astate : Domain.t = Domain.apply_call astate (Procname.to_string calleePname) loc in
             (* Update the abstract state with the function summary as well if it is possible. *)
             match Payload.read ~caller_summary:pData.summary ~callee_pname:calleePname with
-            | Some (summary : Domain.summary) ->
+            | Some (summary : Domain.Summary.t) ->
                 Domain.apply_summary astate summary loc
             | None ->
                 astate )
@@ -100,11 +100,11 @@ let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
     match Analyser.compute_post procData ~initial:pre with
     | Some (post : Domain.t) ->
         (* Convert the abstract state to the function summary. *)
-        let summary : Domain.summary = Domain.astate_to_summary post in
+        let summary : Domain.Summary.t = Domain.Summary.make post in
         (* Debug log. *)
         let fmt : F.formatter = F.str_formatter and (_ : string) = F.flush_str_formatter () in
         F.fprintf fmt "\n\nFunction: %a\n%a%a\n\n" Procname.pp pName Domain.pp post
-          Domain.pp_summary summary ;
+          Domain.Summary.pp summary ;
         L.(debug Capture Verbose) "%s" (F.flush_str_formatter ()) ;
         (* Report atomicity violations. *)
         Domain.report_atomicity_violations post ~f:(fun (loc : Location.t) ~(msg : string) ->

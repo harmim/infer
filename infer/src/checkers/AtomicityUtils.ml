@@ -26,7 +26,7 @@ let str_contains ~(haystack : string) ~(needle : string) : bool =
 
 
 (** A type of a structure that holds function names loaded from a file. *)
-type functionsFromFile = {initialised: bool; names: SSet.t}
+type functionsFromFile = {initialised: bool; names: SSet.t} [@@deriving compare]
 
 (** A reference to a structure that holds functions whose calls should be ignored. *)
 let ignoredFunctionCalls : functionsFromFile ref = ref {initialised= false; names= SSet.empty}

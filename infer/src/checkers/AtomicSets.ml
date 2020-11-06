@@ -9,7 +9,7 @@ module L = Logging
 
 (** A summary payload for analysed functions. *)
 module Payload = SummaryPayload.Make (struct
-  type t = Domain.summary (* A type of the payload is a domain summary. *)
+  type t = Domain.Summary.t (* A type of the payload is a domain summary. *)
 
   let field : (Payloads.t, t option) Field.t = Payloads.Fields.atomic_sets
 end)
@@ -67,7 +67,7 @@ module TransferFunctions (CFG : ProcCfg.S) = struct
             let astate : Domain.t = Domain.apply_call astate (Procname.to_string calleePname) in
             (* Update the abstract state with the function summary as well if it is possible. *)
             match Payload.read ~caller_summary:pData.summary ~callee_pname:calleePname with
-            | Some (summary : Domain.summary) ->
+            | Some (summary : Domain.Summary.t) ->
                 Domain.apply_summary astate summary
             | None ->
                 astate )
@@ -100,11 +100,11 @@ let analyse_procedure (args : Callbacks.proc_callback_args) : Summary.t =
         (* Update the abstract state at the end of a function and convert the abstract state to the
            function summary. *)
         let updatedPost : Domain.t = Domain.update_at_the_end_of_function post in
-        let summary : Domain.summary = Domain.astate_to_summary updatedPost in
+        let summary : Domain.Summary.t = Domain.Summary.make updatedPost in
         (* Debug log. *)
         let fmt : F.formatter = F.str_formatter and (_ : string) = F.flush_str_formatter () in
         F.fprintf fmt "\n\nFunction: %a\n%a%a\n\n" Procname.pp pName Domain.pp updatedPost
-          Domain.pp_summary summary ;
+          Domain.Summary.pp summary ;
         L.(debug Capture Verbose) "%s" (F.flush_str_formatter ()) ;
         Payload.update_summary summary args.summary
     | None ->
@@ -121,8 +121,8 @@ let print_atomic_sets (args : Callbacks.file_callback_args) : IssueLog.t =
       AtomicityUtils.atomicSetsFile
   in
   let print_atomic_sets (pName : Procname.t) : unit =
-    Option.iter (Payload.read_toplevel_procedure pName) ~f:(fun (summary : Domain.summary) ->
-        Domain.print_atomic_sets oc ~f_name:(Procname.to_string pName) summary)
+    Option.iter (Payload.read_toplevel_procedure pName) ~f:(fun (summary : Domain.Summary.t) ->
+        Domain.Summary.print_atomic_sets summary ~f_name:(Procname.to_string pName) oc)
   in
   List.iter args.procedures ~f:print_atomic_sets ;
   Out_channel.close oc ;
