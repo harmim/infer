@@ -8,14 +8,17 @@
 open! IStd
 module L = Logging
 
+type guard_strategy = Default | TryToLock | DeferLock | AdoptLock
+
 type lock_effect =
   | Lock of HilExp.t list
   | Unlock of HilExp.t list
   | LockedIfTrue of HilExp.t list
-  | GuardConstruct of {guard: HilExp.t; lock: HilExp.t; acquire_now: bool}
+  | GuardConstruct of {guard: HilExp.t; locks: HilExp.t list; strategy: guard_strategy}
   | GuardLock of HilExp.t
   | GuardLockedIfTrue of HilExp.t
   | GuardUnlock of HilExp.t
+  | GuardRelease of HilExp.t
   | GuardDestroy of HilExp.t
   | NoEffect
 
@@ -53,7 +56,7 @@ let get_thread_assert_effect = function
 
 
 module Clang : sig
-  val get_lock_effect : Procname.t -> HilExp.t list -> lock_effect
+  val get_lock_effect : ?tenv:Tenv.t option -> Procname.t -> HilExp.t list -> lock_effect
 
   val is_recursive_lock_type : QualifiedCppName.t -> bool
 end = struct
@@ -80,8 +83,8 @@ end = struct
       ; trylock= ["attemptRead"; "attemptWrite"]
       ; unlock= ["release"] }
     in
-    let tmd = {def with trylock= def.trylock @ ["try_lock_for"; "try_lock_until"]} in
-    let tmdShd =
+    let tmd : lock_model = {def with trylock= def.trylock @ ["try_lock_for"; "try_lock_until"]} in
+    let tmdShd : lock_model =
       { shd with
         trylock= tmd.trylock @ ["try_lock_shared"; "try_lock_shared_for"; "try_lock_shared_until"]
       }
@@ -156,11 +159,12 @@ end = struct
         ; "pthread_rwlock_timedwrlock" ] )
 
 
+  let scopedLockGuard : string = "std::scoped_lock" (* no lock/unlock *)
+
   (** C++ guard classes used for scope-based lock management. NB we pretend all classes below
       implement the mutex interface even though only [shared_lock] and [unique_lock] do, for
       simplicity. The comments summarise which methods are implemented. *)
   let guards =
-    (* TODO std::scoped_lock *)
     [ (* no lock/unlock *)
       "apache::thrift::concurrency::Guard"
     ; (* no lock/unlock *)
@@ -178,14 +182,16 @@ end = struct
     ; (* everything *)
       "std::shared_lock"
     ; (* everything *)
-      "std::unique_lock" ]
+      "std::unique_lock"
+    ; scopedLockGuard ]
 
 
-  let ( get_guard_constructor
-      , get_guard_destructor
-      , get_guard_lock
-      , get_guard_unlock
-      , get_guard_trylock ) =
+  let ( (get_guard_constructor : string -> string)
+      , (get_guard_release : string -> string)
+      , (get_guard_destructor : string -> string)
+      , (get_guard_lock : string -> string)
+      , (get_guard_unlock : string -> string)
+      , (get_guard_trylocks : string -> string list) ) =
     let get_class_and_qual_name guard =
       let qual_name = QualifiedCppName.of_qual_string guard in
       let class_name, _ = Option.value_exn (QualifiedCppName.extract_last qual_name) in
@@ -197,24 +203,31 @@ end = struct
       let qual_constructor = QualifiedCppName.append_qualifier qual_name ~qual in
       QualifiedCppName.to_qual_string qual_constructor
     in
-    let make_lock_unlock ~mthd guard =
+    let make_with_mthd_name ~mthd guard =
       let qual_name = QualifiedCppName.of_qual_string guard in
       let qual_mthd = QualifiedCppName.append_qualifier qual_name ~qual:mthd in
       QualifiedCppName.to_qual_string qual_mthd
     in
-    let make_trylock ~mthds guard =
+    let make_with_mthds_names ~mthds guard =
       let qual_name = QualifiedCppName.of_qual_string guard in
       List.map mthds ~f:(fun qual ->
           QualifiedCppName.append_qualifier qual_name ~qual |> QualifiedCppName.to_qual_string )
     in
     ( make_with_classname ~f:(fun class_name -> class_name)
+    , make_with_mthd_name ~mthd:"release"
     , make_with_classname ~f:(fun class_name -> "~" ^ class_name)
-    , make_lock_unlock ~mthd:"lock"
-    , make_lock_unlock ~mthd:"unlock"
-    , make_trylock ~mthds:["try_lock"; "owns_lock"] )
+    , make_with_mthd_name ~mthd:"lock"
+    , make_with_mthd_name ~mthd:"unlock"
+    , make_with_mthds_names ~mthds:["try_lock"; "try_lock_for"; "try_lock_until"] )
 
 
-  let is_guard_constructor, is_guard_destructor, is_guard_unlock, is_guard_lock, is_guard_trylock =
+  let ( (is_guard_constructor : Procname.t -> bool)
+      , (is_guard_release : Procname.t -> bool)
+      , (is_guard_destructor : Procname.t -> bool)
+      , (is_guard_unlock : Procname.t -> bool)
+      , (is_guard_lock : Procname.t -> bool)
+      , (is_guard_trylock : Procname.t -> bool)
+      , (is_scoped_guard_constructor : Procname.t -> bool) ) =
     let make ~f =
       let constructors = List.map guards ~f in
       mk_matcher constructors
@@ -223,14 +236,20 @@ end = struct
       let methods = List.concat_map guards ~f in
       mk_matcher methods
     in
+    let make_scoped_lock ~(f : string -> string) : Procname.t -> bool =
+      mk_matcher [f scopedLockGuard]
+    in
     ( make ~f:get_guard_constructor
+    , make ~f:get_guard_release
     , make ~f:get_guard_destructor
     , make ~f:get_guard_unlock
     , make ~f:get_guard_lock
-    , make_trylock ~f:get_guard_trylock )
+    , make_trylock ~f:get_guard_trylocks
+    , make_scoped_lock ~f:get_guard_constructor )
 
 
-  let get_lock_effect pname actuals =
+  let get_lock_effect ?(tenv : Tenv.t option = None) (pname : Procname.t) (actuals : HilExp.t list)
+      : lock_effect =
     let log_parse_error error =
       L.debug Analysis Verbose "%s pname:%a actuals:%a@." error Procname.pp pname
         (PrettyPrintable.pp_collection ~pp_item:HilExp.pp)
@@ -238,11 +257,26 @@ end = struct
     in
     let guard_action ~f ~error =
       match actuals with
-      | [guard] ->
+      | (guard :: _ : HilExp.t list) ->
           f guard
       | _ ->
           log_parse_error error ;
           NoEffect
+    in
+    let get_guard_strategy (param : HilExp.t) (default : guard_strategy) : guard_strategy =
+      if Option.is_none tenv then default
+      else
+        match HilExp.get_typ (Option.value_exn tenv) param with
+        | Some (typ : Typ.t) ->
+            if not (Typ.is_pointer_to_cpp_class typ) then default
+            else
+              let typStr : string = Typ.to_string (Typ.strip_ptr typ) in
+              if String.equal typStr "std::defer_lock_t" then DeferLock
+              else if String.equal typStr "std::adopt_lock_t" then AdoptLock
+              else if String.equal typStr "std::try_to_lock_t" then TryToLock
+              else default
+        | None ->
+            default
     in
     let fst_arg = match actuals with x :: _ -> [x] | _ -> [] in
     if is_std_lock pname then Lock actuals
@@ -253,12 +287,25 @@ end = struct
     else if is_std_trylock pname then LockedIfTrue actuals
     else if is_pthread_trylock pname then LockedIfTrue fst_arg
     else if is_trylock pname then LockedIfTrue fst_arg
+    else if is_scoped_guard_constructor pname then (
+      match actuals with
+      | ([guard; lock] : HilExp.t list) ->
+          GuardConstruct {guard; locks= [lock]; strategy= Default}
+      | (guard :: param :: locks : HilExp.t list) -> (
+        match get_guard_strategy param Default with
+        | Default ->
+            GuardConstruct {guard; locks= param :: locks; strategy= Default}
+        | (strategy : guard_strategy) ->
+            GuardConstruct {guard; locks; strategy} )
+      | _ ->
+          log_parse_error "Cannot parse scoped lock guard constructor call" ;
+          NoEffect )
     else if is_guard_constructor pname then (
       match actuals with
-      | [guard; lock] ->
-          GuardConstruct {guard; lock; acquire_now= true}
-      | [guard; lock; _defer_lock] ->
-          GuardConstruct {guard; lock; acquire_now= false}
+      | ([guard; lock] : HilExp.t list) ->
+          GuardConstruct {guard; locks= [lock]; strategy= Default}
+      | ([guard; lock; param] : HilExp.t list) ->
+          GuardConstruct {guard; locks= [lock]; strategy= get_guard_strategy param DeferLock}
       | _ ->
           log_parse_error "Cannot parse guard constructor call" ;
           NoEffect )
@@ -266,6 +313,10 @@ end = struct
       guard_action ~f:(fun guard -> GuardLock guard) ~error:"Can't parse guard lock"
     else if is_guard_unlock pname then
       guard_action ~f:(fun guard -> GuardUnlock guard) ~error:"Can't parse guard unlock"
+    else if is_guard_release pname then
+      guard_action
+        ~f:(fun (guard : HilExp.t) : lock_effect -> GuardRelease guard)
+        ~error:"Can't parse guard release"
     else if is_guard_destructor pname then
       guard_action ~f:(fun guard -> GuardDestroy guard) ~error:"Can't parse guard destructor"
     else if is_guard_trylock pname then
@@ -324,7 +375,8 @@ end = struct
       else NoEffect
 end
 
-let get_lock_effect pname actuals =
+let get_lock_effect ?(tenv : Tenv.t option = None) (pname : Procname.t) (actuals : HilExp.t list) :
+    lock_effect =
   let fst_arg = match actuals with x :: _ -> [x] | _ -> [] in
   if Procname.equal pname BuiltinDecl.__set_locked_attribute then Lock fst_arg
   else if Procname.equal pname BuiltinDecl.__delete_locked_attribute then Unlock fst_arg
@@ -333,7 +385,7 @@ let get_lock_effect pname actuals =
     | Procname.Java java_pname ->
         Java.get_lock_effect pname java_pname actuals
     | Procname.(ObjC_Cpp _ | C _) ->
-        Clang.get_lock_effect pname actuals
+        Clang.get_lock_effect ~tenv pname actuals
     | _ ->
         NoEffect
 
