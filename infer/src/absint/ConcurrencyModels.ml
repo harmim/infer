@@ -56,7 +56,7 @@ let get_thread_assert_effect = function
 
 
 module Clang : sig
-  val get_lock_effect : ?tenv:Tenv.t option -> Procname.t -> HilExp.t list -> lock_effect
+  val get_lock_effect : Procname.t -> HilExp.t list -> Tenv.t option -> lock_effect
 
   val is_recursive_lock_type : QualifiedCppName.t -> bool
 end = struct
@@ -248,8 +248,8 @@ end = struct
     , make_scoped_lock ~f:get_guard_constructor )
 
 
-  let get_lock_effect ?(tenv : Tenv.t option = None) (pname : Procname.t) (actuals : HilExp.t list)
-      : lock_effect =
+  let get_lock_effect (pname : Procname.t) (actuals : HilExp.t list) (tenv : Tenv.t option) :
+      lock_effect =
     let log_parse_error error =
       L.debug Analysis Verbose "%s pname:%a actuals:%a@." error Procname.pp pname
         (PrettyPrintable.pp_collection ~pp_item:HilExp.pp)
@@ -385,7 +385,7 @@ let get_lock_effect ?(tenv : Tenv.t option = None) (pname : Procname.t) (actuals
     | Procname.Java java_pname ->
         Java.get_lock_effect pname java_pname actuals
     | Procname.(ObjC_Cpp _ | C _) ->
-        Clang.get_lock_effect ~tenv pname actuals
+        Clang.get_lock_effect pname actuals tenv
     | _ ->
         NoEffect
 
