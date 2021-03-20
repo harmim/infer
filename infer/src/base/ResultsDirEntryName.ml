@@ -36,6 +36,7 @@ type id =
   | Temporary
   | TestDeterminatorReport
   | TestDeterminatorTempResults
+  | AtomicityViolationsIssues
 [@@deriving enumerate]
 
 type cleanup_action = Delete | Keep [@@deriving equal]
@@ -180,6 +181,11 @@ let of_id = function
   | TestDeterminatorTempResults ->
       { rel_path= "test_determinator_results"
       ; kind= Directory
+      ; before_incremental_analysis= Delete
+      ; before_caching_capture= Delete }
+  | AtomicityViolationsIssues ->
+      { rel_path= "atomicity_issues"
+      ; kind= IssuesDirectory
       ; before_incremental_analysis= Delete
       ; before_caching_capture= Delete }
 

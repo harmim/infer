@@ -358,4 +358,6 @@ val unreachable_cost_call : kind:CostKind.t -> t
 
 val is_autoreleasepool_size_issue : t -> bool
 
-val atomicity_violation : t
+val atomicity_violation_error : t
+
+val atomicity_violation_warning : t
